@@ -70,6 +70,7 @@ var socketExecutors = map[string]Executor{
 	"server.logs.rollover":          executors.ServerLogsRollover,
 	"server.restart":                executors.ServerRestart,
 	"server.temperature_store":      executors.ServerTemperatureStore,
+	"server.webcams.list":           executors.ServerWebcamsList,
 }
 
 var httpExecutors = map[string]map[string]Executor{
