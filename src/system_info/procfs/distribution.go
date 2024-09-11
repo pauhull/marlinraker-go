@@ -29,10 +29,6 @@ var (
 	versionCodenameRegex = regexp.MustCompile(`(?m)^VERSION_CODENAME="?(.+?)"?$`)
 )
 
-func GetDistribution() (*Distribution, error) {
-	return getDistributionImpl("/etc/os-release")
-}
-
 func getDistributionImpl(osReleasePath string) (*Distribution, error) {
 
 	info := &Distribution{}

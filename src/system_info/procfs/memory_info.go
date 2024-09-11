@@ -23,10 +23,6 @@ func getTotalMemImpl(memInfoPath string) (int64, string, error) {
 	return getMemory(memInfo, totalMemRegex)
 }
 
-func GetUsedMem() (int64, string, error) {
-	return getUsedMemImpl("/proc/meminfo")
-}
-
 func getUsedMemImpl(memInfoPath string) (int64, string, error) {
 	memInfoBytes, err := os.ReadFile(memInfoPath)
 	if err != nil {
@@ -58,10 +54,6 @@ func getMemory(memInfo string, regex *regexp.Regexp) (int64, string, error) {
 	} else {
 		return 0, "B", nil
 	}
-}
-
-func GetMemAvail() (int64, error) {
-	return getMemAvailImpl("/proc/meminfo")
 }
 
 func getMemAvailImpl(memInfoPath string) (int64, error) {

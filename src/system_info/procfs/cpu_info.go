@@ -29,10 +29,6 @@ var (
 	processorRegex = regexp.MustCompile(`(?m)^processor\s*: [0-9]+$`)
 )
 
-func GetCpuInfo() (*CpuInfo, error) {
-	return getCpuInfoImpl("/proc/cpuinfo", "/proc/meminfo")
-}
-
 func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*CpuInfo, error) {
 
 	info := &CpuInfo{}
@@ -89,10 +85,6 @@ type CpuTimes = map[string][]int64
 
 var cpuRegex = regexp.MustCompile(`(?m)^(cpu[0-9]*)\s*(.*)$`)
 
-func GetCpuTimes() (CpuTimes, error) {
-	return getCpuTimesImpl("/proc/stat")
-}
-
 func getCpuTimesImpl(procStatPath string) (CpuTimes, error) {
 
 	times := make(CpuTimes)
@@ -147,10 +139,6 @@ func GetCpuUsage(lastTimes CpuTimes, currentTimes CpuTimes) CpuUsage {
 	}
 
 	return usage
-}
-
-func GetCpuTemp() (float64, error) {
-	return getCpuTempImpl("/sys/class/thermal/thermal_zone0/temp")
 }
 
 func getCpuTempImpl(thermalZonePath string) (float64, error) {

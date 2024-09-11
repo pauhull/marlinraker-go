@@ -1,7 +1,6 @@
 package procfs
 
 import (
-	"os/exec"
 	"strconv"
 	"strings"
 )
@@ -20,14 +19,6 @@ var bitFlags = map[int]string{
 	17: "Previously Frequency Capped",
 	18: "Previously Throttled",
 	19: "Previously Temperature Limited",
-}
-
-func GetThrottledState() (ThrottledState, error) {
-	throttledBytes, err := exec.Command("vcgencmd", "get_throttled").Output()
-	if err != nil {
-		return ThrottledState{0, []string{}}, err
-	}
-	return getThrottledStateImpl(throttledBytes)
 }
 
 func getThrottledStateImpl(throttledBytes []byte) (ThrottledState, error) {

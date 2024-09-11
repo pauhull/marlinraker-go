@@ -6,10 +6,6 @@ import (
 	"strings"
 )
 
-func GetLoadAvg() ([3]float32, error) {
-	return getLoadAvgImpl("/proc/loadavg")
-}
-
 func getLoadAvgImpl(loadAvgPath string) ([3]float32, error) {
 	var loadAvg [3]float32
 	loadAvgBytes, err := os.ReadFile(loadAvgPath)

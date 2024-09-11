@@ -26,10 +26,6 @@ var manufacturers = map[string]string{
 	"74": "PNY",
 }
 
-func GetSdInfo() (*SdInfo, error) {
-	return getSdInfoImpl("/sys/block/mmcblk0/device/cid", "/sys/block/mmcblk0/device/csd")
-}
-
 func getSdInfoImpl(cidPath string, csdPath string) (*SdInfo, error) {
 
 	info := &SdInfo{}

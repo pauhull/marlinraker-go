@@ -73,7 +73,7 @@ func main() {
 	}
 
 	if err := service.Init(cfg); err != nil {
-		log.Panic(err)
+		log.Warnf("Could not initialize service manager: %v", err)
 	}
 	defer service.Close()
 

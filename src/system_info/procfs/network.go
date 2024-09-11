@@ -7,7 +7,6 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-	"time"
 )
 
 type IpAddress struct {
@@ -82,11 +81,6 @@ var (
 	ifaceRegex      = regexp.MustCompile(`(?m)^\s*(.*):\s*([0-9 ]+?)\s*$`)
 	whitespaceRegex = regexp.MustCompile(`\s+`)
 )
-
-func GetNetworkStats(lastStats *TimedNetworkStats) (*TimedNetworkStats, error) {
-	now := float64(time.Now().UnixMilli()) / 1000.0
-	return getNetworkStatsImpl(lastStats, now, "/proc/net/dev")
-}
 
 func getNetworkStatsImpl(lastStats *TimedNetworkStats, now float64, procNetDevPath string) (*TimedNetworkStats, error) {
 
