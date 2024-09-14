@@ -9,12 +9,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.23"
 
-      - name: Build
-        run: go build -v src/main.go
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: 2.x
+          args: release --clean --snapshot
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: marlinraker_snapshot_artifacts
+          path: dist/marlinraker_*/marlinraker

@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+builds:
+  - main: ./src/main.go
+    binary: marlinraker
+    goos: [ linux ]
+    goarch: [ arm, arm64 ]
+    goarm: [ "6", "7" ]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
+      - -X {{ .ModulePath }}/src/constants.Version={{ .Version }}
+      - -X {{ .ModulePath }}/src/constants.suffix={{- if .IsSnapshot -}}dev+{{ .ShortCommit }}{{- end -}}
+    env:
+      - CGO_ENABLED=0
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+archives:
+  - name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+
+release:
+  draft: false
