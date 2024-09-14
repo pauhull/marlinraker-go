@@ -1,6 +1,7 @@
 package printer
 
 import (
+	"fmt"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
@@ -32,7 +33,7 @@ func (state *GcodeState) update(line string) error {
 	case parser.G92.MatchString(line):
 		values, err := parser.ParseG0G1G92(line)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse extruder offset: %w", err)
 		}
 		if value, exists := values["E"]; exists {
 			state.EOffset += state.Position[3] - value
@@ -119,17 +120,17 @@ func (state *GcodeState) restore(context shared.ExecutorContext, restoreTo Gcode
 		restoreTo.IsAbsoluteCoordinate, restoreTo.IsAbsoluteExtrude
 
 	if state.SpeedFactor != restoreTo.SpeedFactor {
-		builder.WriteString("M220 S" + strconv.Itoa(restoreTo.SpeedFactor) + "\n")
+		builder.WriteString(fmt.Sprintf("M220 S%d\n", restoreTo.SpeedFactor))
 		state.SpeedFactor = restoreTo.SpeedFactor
 	}
 
 	if state.ExtrudeFactor != restoreTo.ExtrudeFactor {
-		builder.WriteString("M221 S" + strconv.Itoa(restoreTo.ExtrudeFactor) + "\n")
+		builder.WriteString(fmt.Sprintf("M221 S%d\n", restoreTo.ExtrudeFactor))
 		state.ExtrudeFactor = restoreTo.ExtrudeFactor
 	}
 
 	if state.Feedrate != restoreTo.Feedrate {
-		builder.WriteString("G0 F" + strconv.Itoa(int(restoreTo.Feedrate)) + "\n")
+		builder.WriteString(fmt.Sprintf("G0 F%d\n", int(restoreTo.Feedrate)))
 		state.Feedrate = restoreTo.Feedrate
 	}
 
@@ -150,7 +151,7 @@ func (state *GcodeState) restore(context shared.ExecutorContext, restoreTo Gcode
 	}
 
 	if len(coords) > 0 {
-		builder.WriteString("G1 " + strings.Join(coords, " ") + "\n")
+		builder.WriteString(fmt.Sprintf("G1 %s\n", strings.Join(coords, " ")))
 	}
 	state.Position = restoreTo.Position
 

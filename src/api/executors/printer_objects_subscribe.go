@@ -1,6 +1,7 @@
 package executors
 
 import (
+	"errors"
 	"fmt"
 	"github.com/samber/lo"
 	"marlinraker/src/marlinraker/connections"
@@ -8,7 +9,6 @@ import (
 	"marlinraker/src/system_info/procfs"
 	"marlinraker/src/util"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -29,7 +29,7 @@ func PrinterObjectsSubscribeHttp(_ *connections.Connection, _ *http.Request, par
 	})
 
 	if !found {
-		return nil, util.NewError("connection with id "+strconv.Itoa(int(connectionId))+" does not exist", 400)
+		return nil, util.NewErrorf(400, "connection with id %d does not exist", connectionId)
 	}
 
 	subscriptions := make(map[string][]string)
@@ -51,7 +51,7 @@ func PrinterObjectsSubscribeHttp(_ *connections.Connection, _ *http.Request, par
 func PrinterObjectsSubscribeSocket(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
 	objects, exist := params["objects"].(map[string]any)
 	if !exist {
-		return nil, util.NewError("objects param is required", 400)
+		return nil, util.NewError(400, "objects param is required")
 	}
 
 	subscriptions := make(map[string][]string)
@@ -84,9 +84,15 @@ func subscribe(connection *connections.Connection, subscriptions map[string][]st
 		return results, nil
 	}
 
+	var errs []error
 	for name, attributes := range subscriptions {
 		printer_objects.Subscribe(connection, name, attributes)
-		result := printer_objects.Query(name)
+		result, err := printer_objects.Query(name)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to query %s: %v", name, err))
+			continue
+		}
+
 		if attributes != nil {
 			filteredResult := make(printer_objects.QueryResult)
 			for _, attribute := range attributes {
@@ -99,5 +105,8 @@ func subscribe(connection *connections.Connection, subscriptions map[string][]st
 		results.Status[name] = result
 	}
 
+	if err = errors.Join(errs...); err != nil {
+		return nil, err
+	}
 	return results, nil
 }

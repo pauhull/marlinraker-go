@@ -6,6 +6,6 @@ type gcodeMacroObject struct {
 	variables map[string]any
 }
 
-func (object gcodeMacroObject) Query() printer_objects.QueryResult {
-	return object.variables
+func (object gcodeMacroObject) Query() (printer_objects.QueryResult, error) {
+	return object.variables, nil
 }

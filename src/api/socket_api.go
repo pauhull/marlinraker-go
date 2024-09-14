@@ -51,31 +51,31 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 		if err != nil {
 			break
 		}
-		log.Debugln("recv: " + string(message))
+		log.Debugf("recv: %s", string(message))
 
 		var request RpcRequest
 		err = json.Unmarshal(message, &request)
 		if err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to unmarshal request: %v", err)
 			continue
 		}
 
 		executor := socketExecutors[request.Method]
 		if executor == nil {
-			log.Errorln("No executor found for " + request.Method)
+			log.Errorf("No executor found for %s", request.Method)
 			err = connection.WriteJson(&RpcErrorResponse{
 				Error: Error{404, "Not Found"},
 				Rpc:   request.Rpc,
 			})
 			if err != nil {
-				util.LogError(err)
+				log.Errorf("Failed to send response: %v", err)
 			}
 			continue
 		}
 
 		result, err := executor(connection, nil, request.Params)
 		if err != nil {
-			log.Errorln("Error while executing "+request.Method+":", err)
+			log.Errorf("Error while executing %s: %v", request.Method, err)
 			code := 500
 			if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
 				code = executorError.Code
@@ -85,14 +85,14 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 				Rpc:   request.Rpc,
 			})
 			if err != nil {
-				util.LogError(err)
+				log.Errorf("Failed to send response: %v", err)
 			}
 			continue
 		}
 
 		err = connection.WriteJson(&RpcResultResponse{request.Rpc, result})
 		if err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to send response: %v", err)
 		}
 	}
 

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 )
@@ -93,7 +94,7 @@ func klipperizeHeaterName(name string, isHeater bool) string {
 		if id == "0" {
 			id = ""
 		}
-		klipperName = "extruder" + id
+		klipperName = fmt.Sprintf("extruder%s", id)
 	} else {
 		switch name {
 		case "B":
@@ -110,9 +111,9 @@ func klipperizeHeaterName(name string, isHeater bool) string {
 			}
 		default:
 			if isHeater {
-				klipperName = "heater_generic " + name
+				klipperName = fmt.Sprintf("heater_generic %s", name)
 			} else {
-				klipperName = "temperature_sensor " + name
+				klipperName = fmt.Sprintf("temperature_sensor %s", name)
 			}
 		}
 	}

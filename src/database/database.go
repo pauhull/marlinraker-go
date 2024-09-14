@@ -2,6 +2,7 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	"github.com/samber/lo"
 	"github.com/spf13/afero"
 	"github.com/tidwall/gjson"
@@ -26,18 +27,18 @@ func Init() error {
 	dbFile = filepath.Join(files.DataDir, "db.json")
 	file, err := files.Fs.OpenFile(dbFile, os.O_CREATE|os.O_RDWR, 0755)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open database file: %w", err)
 	}
 
 	jsonBytes, err := afero.ReadAll(file)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read database file: %w", err)
 	}
 
 	if len(jsonBytes) == 0 {
 		jsonBytes = []byte("{}")
-		if _, err := file.Write(jsonBytes); err != nil {
-			return err
+		if _, err = file.Write(jsonBytes); err != nil {
+			return fmt.Errorf("failed to write database file: %w", err)
 		}
 	}
 
@@ -52,7 +53,11 @@ func Init() error {
 func GetItem(namespace string, key string, internal bool) (any, error) {
 	mu.RLock()
 	defer mu.RUnlock()
-	return getItem(namespace, key, internal)
+	item, err := getItem(namespace, key, internal)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get item: %w", err)
+	}
+	return item, nil
 }
 
 func getItem(namespace string, key string, internal bool) (any, error) {
@@ -66,9 +71,9 @@ func getItem(namespace string, key string, internal bool) (any, error) {
 
 	if result == nil {
 		if key != "" {
-			return nil, util.NewError("key \""+key+"\" in namespace \""+namespace+"\" not found", 404)
+			return nil, util.NewErrorf(404, "key %q in namespace %q not found", key, namespace)
 		} else {
-			return nil, util.NewError("namespace \""+namespace+"\" not found", 404)
+			return nil, util.NewErrorf(404, "namespace %q not found", namespace)
 		}
 	}
 	return result, nil
@@ -88,11 +93,11 @@ func PostItem(namespace string, key string, value any, internal bool) (any, erro
 	var err error
 	json, err = sjson.Set(json, path, value)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to set value: %w", err)
 	}
 
 	if err := afero.WriteFile(files.Fs, dbFile, []byte(json), 0755); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to write database file: %w", err)
 	}
 	return value, nil
 }
@@ -133,7 +138,7 @@ func ListNamespaces() []string {
 
 func joinPath(namespace string, key string) string {
 	if key != "" {
-		return namespace + "." + key
+		return fmt.Sprintf("%s.%s", namespace, key)
 	} else {
 		return namespace
 	}

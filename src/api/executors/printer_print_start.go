@@ -10,7 +10,7 @@ import (
 
 func PrinterPrintStart(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 	if marlinraker.Printer == nil {
-		return nil, util.NewError("printer is not online", 500)
+		return nil, util.NewError(500, "printer is not online")
 	}
 
 	fileName, err := params.RequireString("filename")

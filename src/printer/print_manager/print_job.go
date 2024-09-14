@@ -2,6 +2,8 @@ package print_manager
 
 import (
 	"bufio"
+	"errors"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"marlinraker/src/files"
 	"marlinraker/src/printer/parser"
@@ -80,15 +82,15 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 	go func() {
 		defer func() {
 			if err := file.Close(); err != nil {
-				util.LogError(err)
+				log.Errorf("Failed to close file %q: %v", job.filePath, err)
 			}
 		}()
 
 		for {
 			bytes, err := reader.ReadBytes('\n')
 			if err != nil {
-				if err != io.EOF {
-					util.LogError(err)
+				if !errors.Is(err, io.EOF) {
+					log.Errorf("Failed to read file %q: %v", job.filePath, err)
 				}
 				break
 			}
@@ -99,7 +101,7 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 
 			if canceled, err := job.nextLine(line); err != nil || canceled {
 				if err != nil {
-					util.LogError(err)
+					log.Errorf("Failed to process line %q: %v", line, err)
 				}
 				return
 			}

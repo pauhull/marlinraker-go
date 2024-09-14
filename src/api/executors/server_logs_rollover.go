@@ -4,7 +4,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker/connections"
-	"marlinraker/src/util"
 	"net/http"
 	"os/exec"
 	"path/filepath"
@@ -21,8 +20,8 @@ func ServerLogsRollover(*connections.Connection, *http.Request, Params) (any, er
 	statusFile := filepath.Join(files.DataDir, "logrotate.status")
 	if out, err := exec.Command("logrotate", "-s", statusFile, "-f", "/etc/logrotate.d/marlinraker").CombinedOutput(); err != nil {
 		result := strings.TrimSpace(string(out))
-		log.Error(result)
-		util.LogError(err)
+		log.Errorf("Failed to rollover logs: %v", err)
+		log.Errorln(result)
 
 		return ServerLogsRolloverResult{
 			RolledOver: []string{},

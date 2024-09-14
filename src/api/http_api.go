@@ -45,7 +45,7 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) error {
 
 	executor := httpExecutors[method][url]
 	if executor == nil {
-		log.Errorln("No executor found for " + url)
+		log.Errorf("No executor found for %s", url)
 		writer.WriteHeader(404)
 		bytes, err := json.Marshal(&Error{Code: 404, Message: "Not Found"})
 		if err != nil {
@@ -64,7 +64,7 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) error {
 func writeExecutorResponse(writer http.ResponseWriter, method string, url string, result any, err error) error {
 
 	if err != nil {
-		log.Errorln("Error while executing "+method+" "+url+":", err)
+		log.Errorf("Error while executing %s %s: %v", method, url, err)
 		code := 500
 		if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
 			code = executorError.Code
@@ -96,7 +96,7 @@ func writeExecutorResponse(writer http.ResponseWriter, method string, url string
 	return err
 }
 
-func handleFileDownload(writer http.ResponseWriter, request *http.Request) {
+func handleFileDownload(writer http.ResponseWriter, request *http.Request) error {
 	path := util.SanitizePath(strings.TrimPrefix(request.URL.Path, "/server/files/"))
 
 	switch path {
@@ -109,6 +109,7 @@ func handleFileDownload(writer http.ResponseWriter, request *http.Request) {
 		diskPath := filepath.Join(files.DataDir, util.SanitizePath(path))
 		http.ServeFile(writer, request, diskPath)
 	}
+	return nil
 }
 
 func handleFileDelete(writer http.ResponseWriter, request *http.Request) error {

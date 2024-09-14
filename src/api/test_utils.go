@@ -81,7 +81,7 @@ func testSocket[Result any](t *testing.T, method string, params executors.Params
 		}))
 
 		defer server.Close()
-		socketUrl := "ws" + server.URL[4:]
+		socketUrl := fmt.Sprintf("ws%s", server.URL[4:])
 
 		socket, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
 		if err != nil {
@@ -158,7 +158,7 @@ func makeConnection(t *testing.T) (*websocket.Conn, int) {
 	}))
 
 	defer server.Close()
-	socketUrl := "ws" + server.URL[4:]
+	socketUrl := fmt.Sprintf("ws%s", server.URL[4:])
 
 	socket, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
 	if err != nil {

@@ -2,6 +2,7 @@ package files
 
 import (
 	"errors"
+	"fmt"
 	"github.com/spf13/afero"
 	"marlinraker/src/api/notification"
 	"path/filepath"
@@ -172,7 +173,7 @@ func DeleteDir(path string, force bool) (DirectoryAction, error) {
 	}
 
 	if !stat.IsDir() {
-		return action, errors.New("\"" + path + "\" is not a directory")
+		return action, fmt.Errorf("%q is not a directory", path)
 	}
 	if !strings.Contains(root.Permissions, "w") {
 		return action, errors.New("no write permissions")

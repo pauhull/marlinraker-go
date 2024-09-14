@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/coreos/go-systemd/v22/dbus"
 	"marlinraker/src/config"
 	"strings"
@@ -35,10 +36,10 @@ func Init(config *config.Config) error {
 	allowedServices = config.Misc.AllowedServices
 	for i, service := range allowedServices {
 		if !strings.HasSuffix(service, ".service") {
-			allowedServices[i] = service + ".service"
+			allowedServices[i] = fmt.Sprintf("%s.service", service)
 		}
 	}
-	return err
+	return fmt.Errorf("failed to connect to dbus: %w", err)
 }
 
 func Close() {
@@ -54,7 +55,7 @@ func GetServiceState() (map[string]UnitState, error) {
 
 	units, err := conn.ListUnitsByNamesContext(ctx, allowedServices)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to list units: %w", err)
 	}
 
 	state := make(map[string]UnitState)

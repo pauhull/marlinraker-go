@@ -1,12 +1,11 @@
 package macros
 
 import (
-	"errors"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/config"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
-	"marlinraker/src/util"
 	"regexp"
 	"strconv"
 	"strings"
@@ -28,7 +27,7 @@ var (
 func (params Params) RequireString(name string) (string, error) {
 	value, exists := params[name]
 	if !exists {
-		return "", errors.New("missing argument " + strings.ToUpper(name))
+		return "", fmt.Errorf("missing argument %s", strings.ToUpper(name))
 	}
 	return value, nil
 }
@@ -68,26 +67,26 @@ func NewMacroManager(printer shared.Printer, config *config.Config) *MacroManage
 		name = strings.ToUpper(name)
 		macro, err := newCustomMacro(name, "G-Code macro", macroConfig.Gcode)
 		if err != nil {
-			log.Errorln("Error while loading macro \"" + name + "\": " + err.Error())
+			log.Errorf("Error while loading macro %q: %v", name, err)
 			continue
 		}
 		if existing, exists := macros[name]; exists {
 			rename := strings.ToUpper(macroConfig.RenameExisting)
 			if rename == "" {
-				rename = name + "_BASE"
+				rename = fmt.Sprintf("%s_BASE", name)
 			}
 			if _, exists := macros[rename]; exists {
-				log.Errorln("Error while loading macro \"" + name + "\": Macro \"" + rename + "\" already exists." +
-					" Choose another macro name with \"rename_existing\"")
+				log.Errorf("Error while loading macro %q: Macro %q already exists."+
+					" Choose another macro name with \"rename_existing\"", name, rename)
 				continue
 			}
 			macros[rename] = renamedMacro{
 				original:    existing,
-				description: "Renamed builtin of '" + name + "'",
+				description: fmt.Sprintf("Original builtin of '%s'", name),
 			}
 		} else if macroConfig.RenameExisting != "" {
-			log.Warningln("Warning while loading macro \"" + name + "\": \"rename_existing\" was specified " +
-				"although a macro with the name \"" + name + "\" did not exist before")
+			log.Warningf("Warning while loading macro %q: \"rename_existing\" was specified "+
+				"although a macro with the name %q did not exist before", name, name)
 		}
 		macros[name] = macro
 
@@ -118,11 +117,15 @@ func (manager *MacroManager) GetMacro(command string) (Macro, string, bool) {
 	return macro, command, exists
 }
 
-func (manager *MacroManager) ExecuteMacro(macro Macro, context shared.ExecutorContext, gcode string) chan error {
+func (manager *MacroManager) ExecuteMacro(macro Macro, context shared.ExecutorContext, gcode string) (chan error, error) {
 
+	var err error
 	objects, params := make(Objects), make(Params)
 	for name, object := range printer_objects.GetObjects() {
-		objects[name] = object.Query()
+		objects[name], err = object.Query()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	parts := strings.Split(gcode, " ")
@@ -132,8 +135,7 @@ func (manager *MacroManager) ExecuteMacro(macro Macro, context shared.ExecutorCo
 		name, valueQuoted := strings.ToLower(match[1]), match[2]
 		value, err := strconv.Unquote(valueQuoted)
 		if err != nil {
-			util.LogError(err)
-			continue
+			return nil, err
 		}
 		params[name] = value
 	}
@@ -151,5 +153,5 @@ func (manager *MacroManager) ExecuteMacro(macro Macro, context shared.ExecutorCo
 		defer close(ch)
 		ch <- macro.Execute(manager, context, rawParams, objects, params)
 	}()
-	return ch
+	return ch, nil
 }

@@ -1,9 +1,9 @@
 package printer
 
 import (
+	log "github.com/sirupsen/logrus"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/printer_objects"
-	"marlinraker/src/util"
 	"math"
 	"strings"
 	"time"
@@ -47,7 +47,7 @@ func (watcher *positionWatcher) handle(line string) {
 func (watcher *positionWatcher) readPos(line string) {
 	position, err := parser.ParseM114(line)
 	if err != nil {
-		util.LogError(err)
+		log.Errorf("Failed to emit objects: %v", err)
 		return
 	}
 
@@ -74,7 +74,7 @@ func (watcher *positionWatcher) readPos(line string) {
 	}
 
 	if err := printer_objects.EmitObject("toolhead", "motion_report", "gcode_move"); err != nil {
-		util.LogError(err)
+		log.Errorf("Failed to emit objects: %v", err)
 	}
 }
 

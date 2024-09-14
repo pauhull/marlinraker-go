@@ -2,6 +2,7 @@ package print_manager
 
 import (
 	"errors"
+	"fmt"
 	"marlinraker/src/files"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
@@ -81,22 +82,24 @@ func (manager *PrintManager) SelectFile(fileName string) error {
 func (manager *PrintManager) Start(context shared.ExecutorContext) error {
 	job, state := manager.currentJob.Load(), manager.state.Load()
 	if !manager.isReadyToPrint(job, state) {
-		return errors.New("already printing")
+		return errors.New("failed to start print: already printing")
 	}
 	if err := job.start(context); err != nil {
-		return err
+		return fmt.Errorf("failed to start print: %w", err)
 	}
-	manager.setState("printing")
+	if err := manager.setState("printing"); err != nil {
+		return fmt.Errorf("failed to start print: %w", err)
+	}
 	return nil
 }
 
 func (manager *PrintManager) Pause(context shared.ExecutorContext) error {
 	job, state := manager.currentJob.Load(), manager.state.Load()
 	if job == nil || state != "printing" {
-		return errors.New("not currently printing")
+		return errors.New("failed to pause print: not currently printing")
 	}
 	if !job.pause(context) {
-		return errors.New("cannot pause right now")
+		return errors.New("failed to pause print: cannot pause right now")
 	}
 	return nil
 }
@@ -104,10 +107,10 @@ func (manager *PrintManager) Pause(context shared.ExecutorContext) error {
 func (manager *PrintManager) Resume(context shared.ExecutorContext) error {
 	job, state := manager.currentJob.Load(), manager.state.Load()
 	if job == nil || state != "paused" {
-		return errors.New("no paused print")
+		return errors.New("failed to resume print: no paused print")
 	}
 	if !job.resume(context) {
-		return errors.New("cannot resume right now")
+		return errors.New("failed to resume print: cannot resume right now")
 	}
 	return nil
 }
@@ -130,11 +133,13 @@ func (manager *PrintManager) Reset(context shared.ExecutorContext) error {
 	}
 	if manager.isPrinting(job, state) {
 		if err := manager.Cancel(context); err != nil {
-			return err
+			return fmt.Errorf("failed to reset print: %w", err)
 		}
 	}
 	manager.currentJob.Store(nil)
-	manager.setState("standby")
+	if err := manager.setState("standby"); err != nil {
+		return fmt.Errorf("failed to reset print: %w", err)
+	}
 	return nil
 }
 
@@ -175,15 +180,19 @@ func (manager *PrintManager) isReadyToPrint(job *printJob, state string) bool {
 	return false
 }
 
-func (manager *PrintManager) setState(state string) {
+func (manager *PrintManager) setState(state string) error {
 	manager.state.Store(state)
-	manager.emit()
+	if err := manager.emit(); err != nil {
+		return fmt.Errorf("failed set printer state to %q: %w", state, err)
+	}
+	return nil
 }
 
-func (manager *PrintManager) emit() {
+func (manager *PrintManager) emit() error {
 	if err := printer_objects.EmitObject("print_stats", "virtual_sdcard"); err != nil {
-		util.LogError(err)
+		return fmt.Errorf("failed to emit print stats: %w", err)
 	}
+	return nil
 }
 
 func (manager *PrintManager) getFilamentUsed() float64 {

@@ -1,6 +1,8 @@
 package printer_objects
 
 import (
+	"errors"
+	"fmt"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/system_info/procfs"
@@ -11,7 +13,7 @@ import (
 type QueryResult map[string]any
 
 type PrinterObject interface {
-	Query() QueryResult
+	Query() (QueryResult, error)
 }
 
 type Subscriptions map[*connections.Connection][]string
@@ -31,13 +33,13 @@ func GetObjects() map[string]PrinterObject {
 	return objects
 }
 
-func Query(name string) QueryResult {
+func Query(name string) (QueryResult, error) {
 	objectsMutex.RLock()
 	defer objectsMutex.RUnlock()
 
 	object, exists := objects[name]
 	if !exists {
-		return QueryResult{}
+		return QueryResult{}, nil
 	}
 	return object.Query()
 }
@@ -49,14 +51,23 @@ func EmitObject(names ...string) error {
 
 	eventTime, err := procfs.GetUptime()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get uptime: %w", err)
 	}
 
 	pending := make(map[*connections.Connection]map[string]QueryResult)
 
+	var (
+		result QueryResult
+		errs   []error
+	)
 	for _, name := range names {
 
-		result := Query(name)
+		result, err = Query(name)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to query object: %w", err))
+			continue
+		}
+
 		for connection, attributes := range subscriptions[name] {
 
 			diff := getDiff(connection, name, result)
@@ -78,12 +89,12 @@ func EmitObject(names ...string) error {
 	}
 
 	for connection, status := range pending {
-		err := notification.Send(connection, notification.New("notify_status_update", []any{status, eventTime}))
+		err = notification.Send(connection, notification.New("notify_status_update", []any{status, eventTime}))
 		if err != nil {
-			return err
+			errs = append(errs, fmt.Errorf("failed to send notification: %w", err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func RegisterObject(name string, object PrinterObject) {

@@ -2,11 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"io"
 	"marlinraker/src/api/executors"
 	"marlinraker/src/marlinraker"
-	"marlinraker/src/util"
 	"net/http"
 	"strings"
 )
@@ -131,7 +132,10 @@ func handleOctoPrint(writer http.ResponseWriter, request *http.Request) error {
 	method := request.Method
 	path := strings.TrimRight(request.URL.Path, "/")
 
-	var result any
+	var (
+		result any
+		err    error
+	)
 
 	if method == "GET" {
 		switch path {
@@ -154,18 +158,17 @@ func handleOctoPrint(writer http.ResponseWriter, request *http.Request) error {
 	} else if method == "POST" {
 		switch path {
 		case "/api/files/local":
-			var err error
 			result, err = executors.ServerFilesUpload(nil, request, nil)
-			if err != nil {
-				return err
-			}
 		case "/api/printer/command":
-			result = handleApiPrinterCommand(request)
+			result, err = handleApiPrinterCommand(request)
+		}
+		if err != nil {
+			return err
 		}
 	}
 
 	if result == nil {
-		log.Errorln("Cannot find OctoPrint API endpoint \"" + method + " " + path + "\"")
+		log.Errorf("Cannot find OctoPrint API endpoint %s %s", method, path)
 		writer.WriteHeader(404)
 		_, err := writer.Write([]byte("Not found"))
 		return err
@@ -180,29 +183,28 @@ func handleOctoPrint(writer http.ResponseWriter, request *http.Request) error {
 	return err
 }
 
-func handleApiPrinterCommand(request *http.Request) any {
+func handleApiPrinterCommand(request *http.Request) (any, error) {
 
 	printer := marlinraker.Printer
 	if printer == nil {
-		return struct{}{}
+		return nil, errors.New("printer not connected")
 	}
 
 	if request.Body != nil && request.ContentLength > 0 {
 		bodyBytes, err := io.ReadAll(request.Body)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("unable to read request body: %w", err)
 		}
 		var body struct {
 			Commands []string `json:"commands"`
 		}
 		if err := json.Unmarshal(bodyBytes, &body); err != nil {
-			util.LogError(err)
-			return struct{}{}
+			return nil, fmt.Errorf("unable to unmarshal request body: %w", err)
 		}
 
 		for _, command := range body.Commands {
 			<-printer.MainExecutorContext().QueueGcode(command, false)
 		}
 	}
-	return struct{}{}
+	return struct{}{}, nil
 }

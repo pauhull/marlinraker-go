@@ -24,7 +24,7 @@ func (params Params) GetString(name string) (string, bool) {
 func (params Params) RequireString(name string) (string, error) {
 	value, exists := params.GetString(name)
 	if !exists {
-		return "", util.NewError(name+" param is required", 400)
+		return "", util.NewErrorf(400, "%s param is required", name)
 	}
 	return value, nil
 }
@@ -59,7 +59,7 @@ func (params Params) GetInt64(name string) (int64, bool) {
 func (params Params) RequireInt64(name string) (int64, error) {
 	value, exists := params.GetInt64(name)
 	if !exists {
-		return 0, util.NewError(name+" param is required", 400)
+		return 0, util.NewErrorf(400, "%s param is required", name)
 	}
 	return value, nil
 }
@@ -81,7 +81,7 @@ func (params Params) GetBool(name string) (bool, bool) {
 func (params Params) RequireBool(name string) (bool, error) {
 	value, exists := params.GetBool(name)
 	if !exists {
-		return false, util.NewError(name+" param is required", 400)
+		return false, util.NewErrorf(400, "%s param is required", name)
 	}
 	return value, nil
 }
@@ -104,7 +104,7 @@ func (params Params) GetStringSlice(name string) ([]string, bool) {
 func (params Params) RequireStringSlice(name string) ([]string, error) {
 	value, exists := params.GetStringSlice(name)
 	if !exists {
-		return nil, util.NewError(name+" param is required", 400)
+		return nil, util.NewErrorf(400, "%s param is required", name)
 	}
 	return value, nil
 }
@@ -112,7 +112,7 @@ func (params Params) RequireStringSlice(name string) ([]string, error) {
 func (params Params) RequireAny(name string) (any, error) {
 	value, exists := params[name]
 	if !exists {
-		return nil, util.NewError(name+" param is required", 400)
+		return nil, util.NewErrorf(400, "%s param is required", name)
 	}
 	return value, nil
 }

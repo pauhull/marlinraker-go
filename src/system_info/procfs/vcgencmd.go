@@ -1,6 +1,7 @@
 package procfs
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -25,7 +26,8 @@ func getThrottledStateImpl(throttledBytes []byte) (ThrottledState, error) {
 	throttledStr := strings.TrimSpace(string(throttledBytes))[12:]
 	bits, err := strconv.ParseInt(throttledStr, 16, 32)
 	if err != nil {
-		return ThrottledState{0, []string{}}, err
+		return ThrottledState{0, []string{}},
+			fmt.Errorf("failed to parse throttled state: %w", err)
 	}
 
 	flags := make([]string, 0)

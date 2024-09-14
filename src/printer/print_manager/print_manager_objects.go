@@ -6,7 +6,7 @@ type printStatsObject struct {
 	manager *PrintManager
 }
 
-func (object printStatsObject) Query() printer_objects.QueryResult {
+func (object printStatsObject) Query() (printer_objects.QueryResult, error) {
 
 	var (
 		fileName      string
@@ -27,14 +27,14 @@ func (object printStatsObject) Query() printer_objects.QueryResult {
 		"filament_used":  object.manager.getFilamentUsed(),
 		"state":          object.manager.state.Load(),
 		"message":        "",
-	}
+	}, nil
 }
 
 type virtualSdcardObject struct {
 	manager *PrintManager
 }
 
-func (object virtualSdcardObject) Query() printer_objects.QueryResult {
+func (object virtualSdcardObject) Query() (printer_objects.QueryResult, error) {
 
 	var (
 		filePath string
@@ -54,15 +54,15 @@ func (object virtualSdcardObject) Query() printer_objects.QueryResult {
 		"file_path":     filePath,
 		"file_position": position,
 		"file_size":     size,
-	}
+	}, nil
 }
 
 type pauseResumeObject struct {
 	manager *PrintManager
 }
 
-func (object pauseResumeObject) Query() printer_objects.QueryResult {
+func (object pauseResumeObject) Query() (printer_objects.QueryResult, error) {
 	return printer_objects.QueryResult{
 		"is_paused": object.manager.state.Load() == "paused",
-	}
+	}, nil
 }

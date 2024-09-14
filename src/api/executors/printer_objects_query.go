@@ -48,7 +48,7 @@ func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, param
 
 	objects, exist := params["objects"].(map[string]any)
 	if !exist {
-		return nil, util.NewError("objects param is required", 400)
+		return nil, util.NewError(400, "objects param is required")
 	}
 
 	eventTime, err := procfs.GetUptime()
@@ -69,7 +69,7 @@ func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, param
 					return fmt.Sprintf("%v", attr)
 				})
 			} else {
-				return nil, util.NewError("subscribed topics have to be nil or string list", 400)
+				return nil, util.NewError(400, "subscribed topics have to be nil or string list")
 			}
 		}
 		if result, err := query(name, attributesStr); err == nil {
@@ -83,7 +83,11 @@ func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, param
 }
 
 func query(name string, attributes []string) (printer_objects.QueryResult, error) {
-	result := printer_objects.Query(name)
+	result, err := printer_objects.Query(name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query %s: %v", name, err)
+	}
+
 	if len(attributes) > 0 {
 		filteredResult := make(printer_objects.QueryResult)
 		for _, attribute := range attributes {

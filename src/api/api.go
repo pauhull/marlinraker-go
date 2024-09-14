@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/rs/cors"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
@@ -8,9 +9,7 @@ import (
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
-	"marlinraker/src/util"
 	"net/http"
-	"strconv"
 	"strings"
 )
 
@@ -132,40 +131,41 @@ func (HttpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
 	log.WithField("method", request.Method).Debugln(request.URL.String())
 
 	requestPath := strings.TrimRight(request.URL.Path, "/")
+	err := handlePath(writer, request, requestPath)
+	if err != nil {
+		log.Errorf("Error while handling %s %s: %v", request.Method, requestPath, err)
+		writer.WriteHeader(500)
+		_, _ = writer.Write([]byte(err.Error()))
+	}
+}
+
+func handlePath(writer http.ResponseWriter, request *http.Request, requestPath string) error {
 	switch {
 
 	case requestPath == "":
-		if err := handleIndex(writer, request); err != nil {
-			util.LogError(err)
-		}
+		return handleIndex(writer, request)
 
 	case requestPath == "/websocket":
-		if err := handleSocket(writer, request); err != nil {
-			util.LogError(err)
-		}
+		return handleSocket(writer, request)
 
 	case marlinraker.Config.Misc.OctoprintCompat && strings.HasPrefix(requestPath, "/api/"):
-		if err := handleOctoPrint(writer, request); err != nil {
-			util.LogError(err)
-		}
+		return handleOctoPrint(writer, request)
 
 	case isFilePath(requestPath) && (request.Method == "GET" || request.Method == "DELETE"):
 		if request.Method == "GET" {
-			handleFileDownload(writer, request)
-		} else if err := handleFileDelete(writer, request); err != nil {
-			util.LogError(err)
+			return handleFileDownload(writer, request)
+		} else {
+			return handleFileDelete(writer, request)
 		}
 
 	default:
-		if err := handleHttp(writer, request); err != nil {
-			util.LogError(err)
-		}
+		return handleHttp(writer, request)
 	}
 }
 
 func StartServer() {
-	address := marlinraker.Config.Web.BindAddress + ":" + strconv.Itoa(marlinraker.Config.Web.Port)
-	log.Println("Listening on " + address)
+	address := fmt.Sprintf("%s:%d", marlinraker.Config.Web.BindAddress, marlinraker.Config.Web.Port)
+	log.Printf("Listening on %s", address)
 
 	err := http.ListenAndServe(address, cors.AllowAll().Handler(HttpHandler{}))
 	if err != nil {

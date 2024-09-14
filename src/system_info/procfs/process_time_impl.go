@@ -3,6 +3,7 @@
 package procfs
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -17,5 +18,5 @@ func GetProcessTime() (float32, error) {
 	clk, err := strconv.ParseInt(strings.TrimSpace(string(clkBytes)), 10, 32)
 
 	pid := os.Getpid()
-	return getProcessTimeImpl("/proc/"+strconv.Itoa(pid)+"/stat", int32(clk))
+	return getProcessTimeImpl(fmt.Sprintf("/proc/%d/stat", pid), int32(clk))
 }

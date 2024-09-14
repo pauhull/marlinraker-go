@@ -1,6 +1,7 @@
 package system_info
 
 import (
+	"fmt"
 	"github.com/samber/lo"
 	"marlinraker/src/service"
 	"marlinraker/src/system_info/procfs"
@@ -26,19 +27,19 @@ func GetSystemInfo() (*SystemInfo, error) {
 
 	cpuInfo, err := procfs.GetCpuInfo()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get cpu info: %w", err)
 	}
 
 	sdInfo, _ := procfs.GetSdInfo()
 
 	distribution, err := procfs.GetDistribution()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get distribution info: %w", err)
 	}
 
 	network, err := procfs.GetNetwork()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get network info: %w", err)
 	}
 
 	info := &SystemInfo{

@@ -39,12 +39,12 @@ func main() {
 
 	pidFilePath := filepath.Join(dataDir, "marlinraker.pid")
 	checkAlreadyRunning(pidFilePath)
-	if err := os.WriteFile(pidFilePath, []byte(strconv.Itoa(os.Getpid())), 0755); err != nil {
+	if err := os.WriteFile(pidFilePath, []byte(fmt.Sprint(os.Getpid())), 0755); err != nil {
 		panic(err)
 	}
 	defer func() {
 		if err := os.Remove(pidFilePath); err != nil {
-			log.Panic(err)
+			log.Errorf("Could not remove PID file: %v", err)
 		}
 	}()
 
@@ -64,12 +64,14 @@ func main() {
 	go logger.HandleRotate()
 
 	if err := database.Init(); err != nil {
-		log.Panic(err)
+		log.Errorf("Unable to initialize database: %v", err)
+		return
 	}
 
 	cfg, err := config.LoadConfig(filepath.Join(dataDir, "config/marlinraker.toml"))
 	if err != nil {
-		log.Panic(err)
+		log.Errorf("Unable to load configuration: %v", err)
+		return
 	}
 
 	if err := service.Init(cfg); err != nil {
@@ -105,6 +107,7 @@ func checkAlreadyRunning(pidFilePath string) {
 	}
 
 	if process.Signal(syscall.Signal(0)) == nil {
-		log.Panic("marlinraker is already running (" + string(bytes) + ")")
+		log.Errorf("Marlinraker is already running (PID: %s)", string(bytes))
+		os.Exit(1)
 	}
 }

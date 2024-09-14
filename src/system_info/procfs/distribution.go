@@ -1,6 +1,7 @@
 package procfs
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -35,7 +36,7 @@ func getDistributionImpl(osReleasePath string) (*Distribution, error) {
 
 	osReleaseBytes, err := os.ReadFile(osReleasePath)
 	if err != nil {
-		return info, err
+		return info, fmt.Errorf("failed to read %q: %w", osReleasePath, err)
 	}
 	osRelease := string(osReleaseBytes)
 

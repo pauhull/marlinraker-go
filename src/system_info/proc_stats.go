@@ -1,12 +1,13 @@
 package system_info
 
 import (
+	"fmt"
 	"github.com/samber/lo"
+	log "github.com/sirupsen/logrus"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/system_info/procfs"
-	"marlinraker/src/util"
 	"sync"
 	"time"
 )
@@ -49,13 +50,13 @@ func Run() {
 	var err error
 	lastTimes, err = procfs.GetCpuTimes()
 	if err != nil {
-		util.LogError(err)
+		log.Errorf("Failed to get CPU times: %v", err)
 		return
 	}
 
 	lastNetworkStats, err = procfs.GetNetworkStats(nil)
 	if err != nil {
-		util.LogError(err)
+		log.Errorf("Failed to get network stats: %v", err)
 		return
 	}
 
@@ -63,11 +64,11 @@ func Run() {
 	for {
 		<-ticker.C
 		if err := printer_objects.EmitObject("system_stats"); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to emit system_stats object: %v", err)
 			break
 		}
 		if err := takeSnapshot(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to take system stats snapshot: %v", err)
 			break
 		}
 	}
@@ -88,12 +89,12 @@ func takeSnapshot() error {
 
 	currentTimes, err := procfs.GetCpuTimes()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get CPU times: %w", err)
 	}
 
 	usedMem, memUnits, err := procfs.GetUsedMem()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get used memory: %w", err)
 	}
 
 	stats.SystemCpuUsage = procfs.GetCpuUsage(lastTimes, currentTimes)
@@ -113,19 +114,19 @@ func takeSnapshot() error {
 
 	stats.CpuTemp, err = procfs.GetCpuTemp()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get CPU temp: %w", err)
 	}
 
 	networkStats, err := procfs.GetNetworkStats(lastNetworkStats)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get network stats: %w", err)
 	}
 	lastNetworkStats = networkStats
 	stats.Network = networkStats.Stats
 
 	stats.SystemUptime, err = procfs.GetUptime()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get system uptime: %w", err)
 	}
 
 	stats.WebsocketConnections = len(connections.GetConnections())
@@ -134,7 +135,7 @@ func takeSnapshot() error {
 	if stats.ThrottledState.Bits != throttledState.Bits {
 		err = notification.Publish(notification.New("notify_proc_stat_update", []any{throttledState}))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to publish notification: %w", err)
 		}
 	}
 	stats.ThrottledState = throttledState
@@ -147,5 +148,9 @@ func takeSnapshot() error {
 		WebsocketConnections: stats.WebsocketConnections,
 	}})
 
-	return notification.Publish(notify)
+	err = notification.Publish(notify)
+	if err != nil {
+		return fmt.Errorf("failed to publish notification: %w", err)
+	}
+	return nil
 }

@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"github.com/samber/lo"
-	"strconv"
 	"strings"
 )
 
@@ -66,7 +65,7 @@ func stringifySettings(settings map[string]any) map[string]any {
 			configuration[key] = stringifySettings(value)
 		case []int:
 			configuration[key] = strings.Join(lo.Map(value, func(i int, _ int) string {
-				return strconv.Itoa(i)
+				return fmt.Sprint(i)
 			}), ", ")
 		default:
 			configuration[key] = fmt.Sprintf("%v", value)

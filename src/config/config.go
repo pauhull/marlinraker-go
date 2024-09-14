@@ -96,7 +96,7 @@ func resolve(currentPath string, resolvedSoFar []string) (string, error) {
 	stat, err := files.Fs.Stat(currentPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Warnln("File or directory \"" + currentPath + "\" not found")
+			log.Warnf("File or directory %q not found", currentPath)
 			return "", nil
 		}
 		return "", err
@@ -140,7 +140,7 @@ func resolve(currentPath string, resolvedSoFar []string) (string, error) {
 			}
 
 			if lo.Contains(resolvedSoFar, nextPath) {
-				log.Warnln("Cannot resolve cyclic dependency \"" + filename + "\" in \"" + currentPath + "\"")
+				log.Warnf("Cannot resolve cyclic dependency %q in %q", filename, currentPath)
 				continue
 			}
 

@@ -26,11 +26,11 @@ import (
 
 type TestObject struct{}
 
-func (TestObject) Query() printer_objects.QueryResult {
+func (TestObject) Query() (printer_objects.QueryResult, error) {
 	return map[string]any{
 		"attribute1": "value1",
 		"attribute2": "value2",
-	}
+	}, nil
 }
 
 func TestApi(t *testing.T) {
@@ -233,7 +233,7 @@ func TestApi(t *testing.T) {
 		"namespace": "namespace_1",
 		"key":       "key3",
 	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
-		assert.Error(t, error, "key \"key3\" in namespace \"namespace_1\" not found")
+		assert.Error(t, error, `failed to get item: key "key3" in namespace "namespace_1" not found`)
 	})
 
 	testAll(t, "server.database.post_item", "POST", "/server/database/item", executors.Params{
@@ -264,7 +264,7 @@ func TestApi(t *testing.T) {
 	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseDeleteItemResult, error *Error) {
 
 		_, err := database.GetItem("test_namespace", "delete_me", false)
-		assert.Error(t, err, "key \"delete_me\" in namespace \"test_namespace\" not found")
+		assert.Error(t, err, `failed to get item: key "delete_me" in namespace "test_namespace" not found`)
 
 		namespaces := database.ListNamespaces()
 		assert.Equal(t, slices.Contains(namespaces, "delete_me"), false)
