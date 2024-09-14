@@ -16,7 +16,7 @@ func ServerFilesList(_ *connections.Connection, _ *http.Request, params Params) 
 	}
 	filesList, err := files.ListFiles(root)
 	if err != nil {
-		return nil, util.NewError(err.Error(), 400)
+		return nil, util.NewErrorf(400, "%v", err)
 	}
 	return filesList, nil
 }

@@ -4,7 +4,9 @@ import (
 	"archive/zip"
 	"compress/flate"
 	"errors"
+	"fmt"
 	"github.com/samber/lo"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"io"
 	"io/fs"
@@ -196,7 +198,7 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 	if dest == "" {
 		now := time.Now()
 		timestamp := now.Format("20060102-150405")
-		dest = "config/collection-" + timestamp + ".zip"
+		dest = fmt.Sprintf("config/collection-%s.zip", timestamp)
 	}
 
 	dest = strings.TrimPrefix(dest, "/")
@@ -205,7 +207,7 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 	path := strings.Join(parts[1:], "/")
 
 	if path == "" {
-		return ZipAction{}, util.NewError("invalid file name", 400)
+		return ZipAction{}, util.NewError(400, "invalid file name")
 	}
 
 	root, err := getRootByName(rootName)
@@ -223,7 +225,7 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 	}
 	defer func() {
 		if err := archive.Close(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close archive %s: %v", destDisk, err)
 		}
 	}()
 
@@ -311,7 +313,7 @@ func writeFileToArchive(zipWriter *zip.Writer, fileName string, diskPath string)
 	}
 	defer func() {
 		if err := reader.Close(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close file %q: %v", diskPath, err)
 		}
 	}()
 
@@ -326,7 +328,7 @@ func getRootByName(rootName string) (FileRoot, error) {
 		return item.Name == rootName
 	})
 	if !exists {
-		return FileRoot{}, errors.New("cannot find file root \"" + rootName + "\"")
+		return FileRoot{}, fmt.Errorf("cannot find file root %q", rootName)
 	}
 	return root, nil
 }

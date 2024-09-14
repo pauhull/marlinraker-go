@@ -10,8 +10,6 @@ import (
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/scanner"
 	"marlinraker/src/system_info"
-	"marlinraker/src/util"
-	"strconv"
 )
 
 type KlippyState string
@@ -33,7 +31,7 @@ var (
 )
 
 func Init(cfg *config.Config) {
-	log.Println("Starting Marlinraker " + constants.Version)
+	log.Printf("Starting Marlinraker %s", constants.Version)
 
 	Config = cfg
 	KlipperSettings, KlipperConfig = config.GenerateFakeKlipperConfig(cfg)
@@ -64,12 +62,12 @@ func SetState(state KlippyState, message string) {
 	if state == Ready || state == Shutdown {
 		notify := notification.New("notify_klippy_"+string(state), []any{})
 		if err := notification.Publish(notify); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to public notification: %v", err)
 		}
 	}
 
 	if err := printer_objects.EmitObject("webhooks"); err != nil {
-		util.LogError(err)
+		log.Errorf("Failed to emit object webhooks: %v", err)
 	}
 }
 
@@ -95,7 +93,7 @@ func Connect() {
 		return
 	}
 
-	log.Println("Using port " + port + " @ " + strconv.Itoa(baudRateInt))
+	log.Printf("Using port %s @ %d", port, baudRateInt)
 
 	var err error
 	Printer, err = printer.New(Config, port, baudRateInt)

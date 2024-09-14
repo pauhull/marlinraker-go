@@ -2,14 +2,13 @@ package files
 
 import (
 	"encoding/gob"
+	"fmt"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"io/fs"
-	"marlinraker/src/util"
 	"os"
 	"path/filepath"
-	"strconv"
 )
 
 type Thumbnail struct {
@@ -142,7 +141,7 @@ func LoadOrScanMetadata(fileName string) (*Metadata, error) {
 
 	metadata, err := LoadMetadata(fileName)
 	if err == nil {
-		log.Debugln("Loaded metadata for \"" + fileName + "\" from disk")
+		log.Debugf("Loaded metadata for %q from disk", fileName)
 		return metadata, nil
 	}
 
@@ -153,7 +152,7 @@ func LoadOrScanMetadata(fileName string) (*Metadata, error) {
 	if err := StoreMetadata(metadata); err != nil {
 		return nil, err
 	}
-	log.Debugln("Scanned and stored metadata for \"" + fileName + "\"")
+	log.Debugf("Scanned and stored metadata for %q", fileName)
 	return metadata, nil
 }
 
@@ -168,7 +167,7 @@ func StoreMetadata(metadata *Metadata) error {
 
 	defer func() {
 		if err := file.Close(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close file %q: %v", diskPath, err)
 		}
 	}()
 
@@ -190,7 +189,7 @@ func LoadMetadata(fileName string) (*Metadata, error) {
 
 	defer func() {
 		if err := file.Close(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close file %q: %v", diskPath, err)
 		}
 	}()
 
@@ -218,7 +217,7 @@ func MoveMetadata(src string, dest string) error {
 
 	destBaseName := filepath.Base(dest)
 	for i, thumbnail := range metadata.Thumbnails {
-		destRelPath := ".thumbs/" + destBaseName + "-" + strconv.Itoa(thumbnail.Width) + "x" + strconv.Itoa(thumbnail.Height) + ".png"
+		destRelPath := fmt.Sprintf(".thumbs/%s-%dx%d.png", destBaseName, thumbnail.Width, thumbnail.Height)
 		srcDiskPath, destDiskPath := filepath.Join(srcDir, thumbnail.RelativePath), filepath.Join(destDir, destRelPath)
 		if err := Fs.Rename(srcDiskPath, destDiskPath); err != nil {
 			return err

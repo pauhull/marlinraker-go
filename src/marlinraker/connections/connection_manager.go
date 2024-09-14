@@ -1,8 +1,10 @@
 package connections
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
+	log "github.com/sirupsen/logrus"
 	"marlinraker/src/util"
 	"sync"
 	"sync/atomic"
@@ -22,13 +24,21 @@ type Connection struct {
 func (connection *Connection) WriteText(bytes []byte) error {
 	connection.mutex.Lock()
 	defer connection.mutex.Unlock()
-	return connection.socket.WriteMessage(websocket.TextMessage, bytes)
+	err := connection.socket.WriteMessage(websocket.TextMessage, bytes)
+	if err != nil {
+		return fmt.Errorf("failed to write message: %w", err)
+	}
+	return nil
 }
 
 func (connection *Connection) WriteJson(v any) error {
 	connection.mutex.Lock()
 	defer connection.mutex.Unlock()
-	return connection.socket.WriteJSON(v)
+	err := connection.socket.WriteJSON(v)
+	if err != nil {
+		return fmt.Errorf("failed to write JSON: %w", err)
+	}
+	return nil
 }
 
 var (
@@ -65,7 +75,7 @@ func TerminateAllConnections() {
 	connections.Do(func(connections []Connection) []Connection {
 		for _, connection := range connections {
 			if err := connection.socket.Close(); err != nil {
-				util.LogError(err)
+				log.Errorf("Failed to close socket %s: %v", connection.socket.RemoteAddr(), err)
 			}
 		}
 		return make([]Connection, 0)

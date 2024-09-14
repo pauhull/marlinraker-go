@@ -1,10 +1,6 @@
 package util
 
-import (
-	log "github.com/sirupsen/logrus"
-	"runtime/debug"
-	"strings"
-)
+import "fmt"
 
 type ExecutorError struct {
 	Message string
@@ -15,14 +11,10 @@ func (err *ExecutorError) Error() string {
 	return err.Message
 }
 
-func NewError(message string, code int) error {
+func NewError(code int, message string) error {
 	return &ExecutorError{message, code}
 }
 
-func LogError(err error) {
-	stack := string(debug.Stack())
-	lines := strings.Split(stack, "\n")
-	lines = append(lines[:1], lines[5:len(lines)-1]...)
-	stack = strings.Join(lines, "\n")
-	log.Error("Error: " + err.Error() + "\n" + stack)
+func NewErrorf(code int, format string, a ...interface{}) error {
+	return NewError(code, fmt.Sprintf(format, a...))
 }

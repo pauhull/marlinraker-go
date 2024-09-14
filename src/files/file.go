@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"io"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/util"
@@ -46,7 +47,7 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 
 	defer func() {
 		if err := sourceFile.Close(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close file %q: %v", fileName, err)
 		}
 	}()
 
@@ -76,7 +77,7 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 
 	defer func() {
 		if err := destFile.Close(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close file %q: %v", destPath, err)
 		}
 	}()
 
@@ -90,7 +91,7 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 			return FileUploadAction{}, err
 		}
 		if checksum != hash {
-			return FileUploadAction{}, util.NewError("checksums do not match (got "+checksum+", expected: "+hash+")", 422)
+			return FileUploadAction{}, util.NewErrorf(422, "checksums do not match (got %s, expected: %s)", checksum, hash)
 		}
 	}
 
@@ -143,7 +144,7 @@ func DeleteFile(path string) (FileDeleteAction, error) {
 		return FileDeleteAction{}, err
 	}
 	if stat.IsDir() {
-		return FileDeleteAction{}, util.NewError(diskPath+" is a directory", 400)
+		return FileDeleteAction{}, util.NewErrorf(400, "%s is a directory", diskPath)
 	}
 	if err := Fs.Remove(diskPath); err != nil {
 		return FileDeleteAction{}, err
@@ -179,7 +180,7 @@ func calculateChecksum(filePath string) (string, error) {
 
 	defer func() {
 		if err := file.Close(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close file %q: %v", filePath, err)
 		}
 	}()
 

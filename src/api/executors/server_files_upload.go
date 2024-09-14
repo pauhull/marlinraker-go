@@ -29,7 +29,7 @@ func ServerFilesUpload(_ *connections.Connection, request *http.Request, _ Param
 		root = values[0]
 	}
 	if root != "gcodes" && root != "config" {
-		return nil, util.NewError("unallowed root \""+root+"\"", 400)
+		return nil, util.NewErrorf(400, "unallowed root %q", root)
 	}
 
 	path := ""
@@ -49,11 +49,11 @@ func ServerFilesUpload(_ *connections.Connection, request *http.Request, _ Param
 
 	headers, exist := form.File["file"]
 	if !exist {
-		return nil, util.NewError("cannot find file", 400)
+		return nil, util.NewError(400, "cannot find file")
 	}
 
 	if len(headers) > 1 {
-		return nil, util.NewError("only single file upload allowed", 400)
+		return nil, util.NewError(400, "only single file upload allowed")
 	}
 
 	action, err := files.Upload(root, path, checksum, headers[0])

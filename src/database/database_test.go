@@ -99,13 +99,13 @@ func TestGetItem(t *testing.T) {
 	})
 
 	_, err = GetItem("test", "foo", false)
-	assert.Error(t, err, `key "foo" in namespace "test" not found`)
+	assert.Error(t, err, `failed to get item: key "foo" in namespace "test" not found`)
 
 	_, err = GetItem("foo", "", false)
-	assert.Error(t, err, `namespace "foo" not found`)
+	assert.Error(t, err, `failed to get item: namespace "foo" not found`)
 
 	_, err = GetItem("marlinraker", "foo", false)
-	assert.Error(t, err, "reserved namespace access not allowed")
+	assert.Error(t, err, "failed to get item: reserved namespace access not allowed")
 
 	val, err = GetItem("marlinraker", "foo", true)
 	assert.NilError(t, err)

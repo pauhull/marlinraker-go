@@ -9,7 +9,7 @@ type toolheadObject struct {
 	printer *Printer
 }
 
-func (object toolheadObject) Query() printer_objects.QueryResult {
+func (object toolheadObject) Query() (printer_objects.QueryResult, error) {
 
 	var homedAxes strings.Builder
 	for i, homed := range object.printer.GcodeState.HomedAxes {
@@ -31,26 +31,26 @@ func (object toolheadObject) Query() printer_objects.QueryResult {
 		"max_accel":              3000,
 		"max_accel_to_decel":     1500,
 		"square_corner_velocity": 5,
-	}
+	}, nil
 }
 
 type motionReportObject struct {
 	printer *Printer
 }
 
-func (object motionReportObject) Query() printer_objects.QueryResult {
+func (object motionReportObject) Query() (printer_objects.QueryResult, error) {
 	return printer_objects.QueryResult{
 		"live_position":          object.printer.GcodeState.Position,
 		"live_velocity":          object.printer.GcodeState.Velocity,
 		"live_extruder_velocity": object.printer.GcodeState.EVelocity,
-	}
+	}, nil
 }
 
 type gcodeMoveObject struct {
 	printer *Printer
 }
 
-func (object gcodeMoveObject) Query() printer_objects.QueryResult {
+func (object gcodeMoveObject) Query() (printer_objects.QueryResult, error) {
 	return printer_objects.QueryResult{
 		"gcode_position":       object.printer.GcodeState.Position,
 		"position":             object.printer.GcodeState.Position,
@@ -60,5 +60,5 @@ func (object gcodeMoveObject) Query() printer_objects.QueryResult {
 		"extrude_factor":       float64(object.printer.GcodeState.ExtrudeFactor) / 100.0,
 		"absolute_coordinates": object.printer.GcodeState.IsAbsoluteCoordinate,
 		"absolute_extrude":     object.printer.GcodeState.IsAbsoluteExtrude,
-	}
+	}, nil
 }

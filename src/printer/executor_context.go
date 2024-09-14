@@ -2,11 +2,11 @@ package printer
 
 import (
 	"errors"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"marlinraker/src/marlinraker/gcode_store"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/shared"
-	"marlinraker/src/util"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -104,7 +104,7 @@ func (context *executorContext) QueueGcode(gcode string, silent bool) chan strin
 	context.mu.Lock()
 	defer context.mu.Unlock()
 
-	log.WithField("context", context.name).Debugln("queued " + gcode)
+	log.WithField("context", context.name).Debugf("queued %s", gcode)
 
 	if !silent {
 		gcode_store.LogNow(gcode, gcode_store.Command)
@@ -159,7 +159,7 @@ func (context *executorContext) readLine(line string) {
 		return
 	}
 
-	log.WithField("context", context.name).Debugln("read: " + line)
+	log.WithField("context", context.name).Debugf("read: %s", line)
 
 	if context.responseBuilder.Len() > 0 {
 		context.responseBuilder.WriteByte('\n')
@@ -174,17 +174,22 @@ func (context *executorContext) readLine(line string) {
 func (context *executorContext) flush(cmd command) {
 
 	if macro, name, exists := context.printer.MacroManager.GetMacro(cmd.gcode); exists {
-		log.WithField("context", context.name).Debugln("macro: " + cmd.gcode)
+		log.WithField("context", context.name).Debugf("macro: %s", cmd.gcode)
 
-		subContext, err := context.MakeSubContext(context.Name() + "/" + name)
+		subContext, err := context.MakeSubContext(fmt.Sprintf("%s/%s", context.name, name))
 		if err != nil {
-			log.Panic(err)
+			log.Errorf("Could not create subcontext: %v", err)
+			return
 		}
 
-		if err := <-context.printer.MacroManager.ExecuteMacro(macro, subContext, cmd.gcode); err != nil {
-			message := "!! Error: " + err.Error()
-			if err := context.printer.Respond(message); err != nil {
-				util.LogError(err)
+		ch, err := context.printer.MacroManager.ExecuteMacro(macro, subContext, cmd.gcode)
+		if err != nil {
+			err = <-ch
+		}
+		if err != nil {
+			message := fmt.Sprintf("!! Error: %s", err)
+			if err = context.printer.Respond(message); err != nil {
+				log.Errorf("Failed to send response: %v", err)
 			}
 		}
 		context.ReleaseSubContext()
@@ -197,10 +202,10 @@ func (context *executorContext) flush(cmd command) {
 
 	log.WithField("context", context.name).
 		WithField("port", context.printer.path).
-		Debugln("write: " + string(cmd.gcode))
+		Debugf("write: %s\n", cmd.gcode)
 
-	_, err := context.printer.port.Write([]byte(cmd.gcode + "\n"))
+	_, err := context.printer.port.Write([]byte(fmt.Sprintln(cmd.gcode)))
 	if err != nil {
-		util.LogError(err)
+		log.Errorf("Failed writing to printer port: %v", err)
 	}
 }

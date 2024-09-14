@@ -1,10 +1,9 @@
 package macros
 
 import (
-	"errors"
+	"fmt"
 	"github.com/samber/lo"
 	"marlinraker/src/shared"
-	"strconv"
 	"strings"
 )
 
@@ -23,7 +22,7 @@ func (setHeaterTemperatureMacro) Execute(_ *MacroManager, context shared.Executo
 
 	availableHeaters := objects["heaters"]["available_heaters"].([]string)
 	if !lo.Contains(availableHeaters, heater) {
-		return errors.New("cannot find heater \"" + heater + "\"")
+		return fmt.Errorf("cannot find heater %q", heater)
 	}
 
 	target, err := params.RequireFloat64("target")
@@ -37,15 +36,15 @@ func (setHeaterTemperatureMacro) Execute(_ *MacroManager, context shared.Executo
 		if idx == "" {
 			idx = "0"
 		}
-		gcode := "M104 T" + idx + " S" + strconv.FormatFloat(target, 'f', 2, 64)
+		gcode := fmt.Sprintf("M104 T%s S%.2f", idx, target)
 		<-context.QueueGcode(gcode, true)
 
 	case heater == "heater_bed":
-		gcode := "M140 S" + strconv.FormatFloat(target, 'f', 2, 64)
+		gcode := fmt.Sprintf("M140 S%.2f", target)
 		<-context.QueueGcode(gcode, true)
 
 	default:
-		return errors.New("could not map heater name \"" + heater + "\"")
+		return fmt.Errorf("could not map heater name %q", heater)
 	}
 	return nil
 }

@@ -13,7 +13,7 @@ type ServerConnectionIdentifyResult struct {
 func ServerConnectionIdentify(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
 
 	if connection.Identified {
-		return nil, util.NewError("connection already identified", 400)
+		return nil, util.NewError(400, "connection already identified")
 	}
 
 	clientName, err := params.RequireString("client_name")

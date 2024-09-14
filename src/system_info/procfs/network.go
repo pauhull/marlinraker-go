@@ -1,6 +1,7 @@
 package procfs
 
 import (
+	"fmt"
 	"github.com/samber/lo"
 	"math"
 	"net"
@@ -26,14 +27,14 @@ func GetNetwork() (map[string]Network, error) {
 
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return networks, err
+		return networks, fmt.Errorf("failed to get network interfaces: %w", err)
 	}
 
 	for _, iface := range ifaces {
 
 		addresses, err := iface.Addrs()
 		if err != nil {
-			return networks, err
+			return networks, fmt.Errorf("failed to get addresses for %q: %w", iface.Name, err)
 		}
 
 		networks[iface.Name] = Network{
@@ -86,7 +87,7 @@ func getNetworkStatsImpl(lastStats *TimedNetworkStats, now float64, procNetDevPa
 
 	procNetDevBytes, err := os.ReadFile(procNetDevPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read %q: %w", procNetDevPath, err)
 	}
 	procNetDev := string(procNetDevBytes)
 

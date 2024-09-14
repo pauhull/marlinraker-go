@@ -6,8 +6,6 @@ import (
 	"go.bug.st/serial"
 	"marlinraker/src/config"
 	"marlinraker/src/database"
-	"marlinraker/src/util"
-	"strconv"
 	"time"
 )
 
@@ -32,11 +30,11 @@ func FindSerialPort(config *config.Config) (string, int) {
 		if hasPath && hasBaudRate {
 
 			baudRate := int(baudRateFloat)
-			log.Println("Trying last used port " + path + " @ " + strconv.Itoa(baudRate) + "...")
+			log.Printf("Trying last used port %s @ %d...", path, baudRate)
 
 			success := tryPort(path, baudRate, config.Serial.ConnectionTimeout)
 			if success {
-				log.Println("Found printer at last used port " + path + " @ " + strconv.Itoa(baudRate))
+				log.Printf("Found printer at last used port %s @ %d", path, baudRate)
 				return path, baudRate
 			}
 			time.Sleep(time.Millisecond * 500)
@@ -47,13 +45,13 @@ func FindSerialPort(config *config.Config) (string, int) {
 	if path != "" && baudRate != 0 {
 		_, err := database.PostItem("marlinraker", "lastPath", path, true)
 		if err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to post database item: %v", err)
 		}
 		_, err = database.PostItem("marlinraker", "lastBaudRate", baudRate, true)
 		if err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to post database item: %v", err)
 		}
-		log.Debugln("Saved last successful port " + path + " @ " + strconv.Itoa(baudRate))
+		log.Debugf("Saved last successful port %s @ %d", path, baudRate)
 	}
 	return path, baudRate
 }
@@ -65,7 +63,7 @@ func scan(config *config.Config) (string, int) {
 	if config.Serial.Port == "" || config.Serial.Port == "auto" {
 		ports, err = serial.GetPortsList()
 		if err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to get serial port list: %v", err)
 			return "", 0
 		}
 	} else {
@@ -84,10 +82,10 @@ func scan(config *config.Config) (string, int) {
 
 	for _, path := range ports {
 		for _, baudRate := range baudRates {
-			log.Println("Trying port " + path + " @ " + strconv.Itoa(baudRate) + "...")
+			log.Printf("Trying port %s @ %d...", path, baudRate)
 			success := tryPort(path, baudRate, config.Serial.ConnectionTimeout)
 			if success {
-				log.Println("Found printer at " + path + " @ " + strconv.Itoa(baudRate))
+				log.Printf("Found printer at %s @ %d...", path, baudRate)
 				return path, baudRate
 			}
 			// wait for serial port to recover
@@ -102,19 +100,19 @@ func tryPort(path string, baudRate int, connectionTimeout int) bool {
 
 	port, err := serial.Open(path, &serial.Mode{BaudRate: baudRate})
 	if err != nil {
-		log.Error(err)
+		log.Errorf("Cannot open serial port: %v", err)
 		return false
 	}
 
 	defer func(port serial.Port) {
 		err := port.Close()
 		if err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close serial port %q: %v", path, err)
 		}
 	}(port)
 
 	if _, err = port.Write([]byte("M110 N0\n")); err != nil {
-		log.Error(err)
+		log.Errorf("Failed to write to serial port: %v", err)
 		return false
 	}
 	log.WithField("port", path).WithField("baudRate", baudRate).Debugln("write: M110 N0")
@@ -133,7 +131,9 @@ func tryPort(path string, baudRate int, connectionTimeout int) bool {
 		for scanner.Scan() {
 			line := scanner.Text()
 			if line != "" {
-				log.WithField("port", path).WithField("baudRate", baudRate).Debugln("recv: " + line)
+				log.WithField("port", path).
+					WithField("baudRate", baudRate).
+					Debugf("recv: %s", line)
 			}
 			if line == "ok" {
 				connectCh <- true
@@ -146,9 +146,9 @@ func tryPort(path string, baudRate int, connectionTimeout int) bool {
 	var success bool
 	select {
 	case success = <-timeoutCh:
-		log.Errorln("Timeout on " + path)
+		log.Errorf("Timeout on %s", path)
 		if err := port.Close(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close port %q: %v", path, err)
 		}
 	case success = <-connectCh:
 	}

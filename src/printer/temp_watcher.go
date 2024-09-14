@@ -1,10 +1,10 @@
 package printer
 
 import (
+	log "github.com/sirupsen/logrus"
 	"marlinraker/src/marlinraker/temp_store"
 	"marlinraker/src/printer/parser"
 	"marlinraker/src/printer_objects"
-	"marlinraker/src/util"
 	"math"
 	"regexp"
 	"sync"
@@ -18,14 +18,14 @@ type heaterObject struct {
 	power       float64
 }
 
-func (heaterObject *heaterObject) Query() printer_objects.QueryResult {
+func (heaterObject *heaterObject) Query() (printer_objects.QueryResult, error) {
 	heaterObject.mutex.RLock()
 	defer heaterObject.mutex.RUnlock()
 	return printer_objects.QueryResult{
 		"temperature": heaterObject.temperature,
 		"target":      heaterObject.target,
 		"power":       heaterObject.power,
-	}
+	}, nil
 }
 
 type heatersObject struct {
@@ -33,11 +33,11 @@ type heatersObject struct {
 	availableSensors []string
 }
 
-func (heatersObject heatersObject) Query() printer_objects.QueryResult {
+func (heatersObject heatersObject) Query() (printer_objects.QueryResult, error) {
 	return printer_objects.QueryResult{
 		"available_heaters": heatersObject.availableHeaters,
 		"available_sensors": heatersObject.availableSensors,
-	}
+	}, nil
 }
 
 type temperatureSensorObject struct {
@@ -47,14 +47,14 @@ type temperatureSensorObject struct {
 	measuredMaxTemp float64
 }
 
-func (temperatureSensorObject *temperatureSensorObject) Query() printer_objects.QueryResult {
+func (temperatureSensorObject *temperatureSensorObject) Query() (printer_objects.QueryResult, error) {
 	temperatureSensorObject.mutex.RLock()
 	defer temperatureSensorObject.mutex.RUnlock()
 	return printer_objects.QueryResult{
 		"temperature":       temperatureSensorObject.temperature,
 		"measured_min_temp": temperatureSensorObject.measuredMinTemp,
 		"measured_max_temp": temperatureSensorObject.measuredMaxTemp,
-	}
+	}, nil
 }
 
 type tempWatcher struct {
@@ -113,14 +113,14 @@ func (watcher *tempWatcher) tick() {
 	for name := range watcher.heaterObjects {
 		err := printer_objects.EmitObject(name)
 		if err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to emit object %s: %v", name, err)
 		}
 	}
 
 	for name := range watcher.sensorObjects {
 		err := printer_objects.EmitObject(name)
 		if err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to emit object %s: %v", name, err)
 		}
 	}
 
@@ -155,7 +155,7 @@ func (watcher *tempWatcher) parseTemps(data string) {
 
 	temps, err := parser.ParseM105(data)
 	if err != nil {
-		util.LogError(err)
+		log.Errorf("Cannot parse temp data: %v", err)
 		return
 	}
 

@@ -3,6 +3,7 @@ package printer
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"go.bug.st/serial"
 	"marlinraker/src/api/notification"
@@ -14,7 +15,6 @@ import (
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
 	"marlinraker/src/util"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -49,7 +49,7 @@ func New(config *config.Config, path string, baudRate int) (*Printer, error) {
 
 	port, err := serial.Open(path, &serial.Mode{BaudRate: baudRate})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open serial port %q: %w", path, err)
 	}
 
 	printer := &Printer{
@@ -108,18 +108,18 @@ func (printer *Printer) tryToConnect() error {
 	for i := 0; i < maxAttempts; i++ {
 		if err := printer.handshake(i); err != nil {
 			if i < maxAttempts-1 {
-				util.LogError(err)
-				log.Println("Retrying... (" + strconv.Itoa(maxAttempts-i-1) + " attempt(s) left)")
+				log.Errorf("Printer handshake failed: %v", err)
+				log.Printf("Retrying... (%d attempt(s) left)", maxAttempts-i-1)
 			}
 			continue
 		}
 		return printer.setup()
 	}
-	return errors.New("could not connect to printer after " + strconv.Itoa(maxAttempts) + " attempts")
+	return fmt.Errorf("could not connect to printer after %d attempts", maxAttempts)
 }
 
 func (printer *Printer) handshake(attempt int) error {
-	printer.context = newExecutorContext(printer, "handshake"+strconv.Itoa(attempt))
+	printer.context = newExecutorContext(printer, fmt.Sprintf("handshake%d", attempt))
 	defer printer.context.close()
 
 	errCh1, errCh2 := make(chan error), make(chan error)
@@ -130,7 +130,7 @@ func (printer *Printer) handshake(attempt int) error {
 		for {
 			info, capabilities, err := parser.ParseM115(<-printer.context.QueueGcode("M115", true))
 			if err != nil {
-				util.LogError(err)
+				log.Errorf("Failed to parse capabilities: %v", err)
 				continue
 			}
 
@@ -138,7 +138,7 @@ func (printer *Printer) handshake(attempt int) error {
 			break
 		}
 
-		log.Println("Identified " + printer.info.MachineType + " on " + printer.info.FirmwareName + " with " + strconv.Itoa(len(printer.Capabilities)) + " capabilities")
+		log.Printf("Identified %s on %s with %d capabilities", printer.info.MachineType, printer.info.FirmwareName, len(printer.Capabilities))
 		errCh1 <- nil
 	}()
 
@@ -160,14 +160,15 @@ func (printer *Printer) readPort() {
 	scanner := bufio.NewScanner(printer.port)
 	for scanner.Scan() {
 		line := scanner.Text()
-		log.WithField("port", printer.path).Debugln("recv: " + line)
+		log.WithField("port", printer.path).Debugf("recv: %s", line)
 		printer.readLine(line)
 	}
 	if err := scanner.Err(); err != nil {
-		if err, isPortError := err.(*serial.PortError); isPortError && err.Code() == serial.PortClosed {
-			log.Println("Port " + printer.path + " has been closed")
+		var portErr *serial.PortError
+		if errors.As(err, &portErr) && portErr.Code() == serial.PortClosed {
+			log.Printf("Port %s has been closed", printer.path)
 		} else {
-			util.LogError(err)
+			log.Errorf("Failed to read from port %q: %v", printer.path, err)
 		}
 	}
 	printer.cleanup()
@@ -205,14 +206,14 @@ func (printer *Printer) setup() error {
 			if !printer.config.Printer.Gcode.ReportVelocity {
 				c |= 1 << 2
 			}
-			<-printer.context.QueueGcode("M155 S1 C"+strconv.Itoa(c), true)
+			<-printer.context.QueueGcode(fmt.Sprintf("M155 S1 C%d", c), true)
 		}
 
 		for {
 			ch := printer.context.QueueGcode("M503", true)
 			limits, err := parser.ParseM503(<-ch)
 			if err != nil {
-				log.Println(err)
+				log.Errorf("Failed parsing limits: %v", err)
 				continue
 			}
 			printer.limits = limits
@@ -248,12 +249,12 @@ func (printer *Printer) handleRequestLine(line string) {
 	case parser.M112.MatchString(line):
 		printer.Error = errors.New("emergency stop")
 		if err := printer.Disconnect(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed updating state: %v", err)
 		}
 
 	default:
 		if err := printer.GcodeState.update(line); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed updating state: %v", err)
 		}
 	}
 }
@@ -288,7 +289,7 @@ func (printer *Printer) handleResponseLine(line string) bool {
 
 		err := notification.Publish(notification.New("notify_gcode_response", []any{message}))
 		if err != nil {
-			util.LogError(err)
+			log.Errorf("Error publishing notification: %v", err)
 		}
 
 		gcode_store.LogNow(message, gcode_store.Response)
@@ -300,9 +301,9 @@ func (printer *Printer) handleResponseLine(line string) bool {
 
 func (printer *Printer) executeEmergencyCommand(gcode string) bool {
 	if printer.hasEmergencyParser && parser.IsEmergencyCommand(gcode) {
-		log.Debugln("emergency: " + gcode)
-		if _, err := printer.port.Write([]byte(gcode + "\n")); err != nil {
-			util.LogError(err)
+		log.Debugf("emergency: %s", gcode)
+		if _, err := printer.port.Write([]byte(fmt.Sprintln(gcode))); err != nil {
+			log.Errorf("Failed writing to printer port: %v", err)
 		}
 		printer.handleRequestLine(gcode)
 		return true
@@ -340,7 +341,7 @@ func (printer *Printer) SaveGcodeState(name string) {
 func (printer *Printer) RestoreGcodeState(context shared.ExecutorContext, name string) error {
 	savedState, exists := printer.savedGcodeStates[name]
 	if !exists {
-		return errors.New("there is no saved G-code state with the name \"" + name + "\"")
+		return fmt.Errorf("there is no saved G-code state with the name %q", name)
 	}
 	delete(printer.savedGcodeStates, name)
 	printer.GcodeState.restore(context, savedState)

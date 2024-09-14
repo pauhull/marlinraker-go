@@ -4,14 +4,15 @@ import (
 	"bufio"
 	buf "bytes"
 	"encoding/base64"
+	"fmt"
 	"github.com/nfnt/resize"
 	"github.com/samber/lo"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/afero"
 	"image"
 	"image/draw"
 	"image/png"
 	"io"
-	"marlinraker/src/util"
 	"math"
 	"path/filepath"
 	"regexp"
@@ -38,7 +39,7 @@ func ScanMetadata(fileName string) (*Metadata, error) {
 
 	defer func() {
 		if err := file.Close(); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to close file %q: %v", diskPath, err)
 		}
 	}()
 
@@ -290,14 +291,14 @@ func ScanMetadata(fileName string) (*Metadata, error) {
 
 	metadata.Thumbnails = make([]Thumbnail, 0)
 	for _, data := range thumbnailData {
-		relPath := ".thumbs/" + baseName + "-" + strconv.Itoa(data.width) + "x" + strconv.Itoa(data.height) + ".png"
+		relPath := fmt.Sprintf(".thumbs/%s-%dx%d.png", baseName, data.width, data.height)
 		diskPath := filepath.Join(DataDir, "gcodes", dir, relPath)
 		if err := Fs.MkdirAll(filepath.Dir(diskPath), 0755); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to create directory %q: %v", filepath.Dir(diskPath), err)
 			break
 		}
 		if err := afero.WriteFile(Fs, diskPath, data.bytes, 0755); err != nil {
-			util.LogError(err)
+			log.Errorf("Failed to write thumbnail %q: %v", diskPath, err)
 		}
 		metadata.Thumbnails = append(metadata.Thumbnails, Thumbnail{
 			Size:         len(data.bytes),
@@ -345,7 +346,7 @@ func extractThumbnail(header string, reader *bufio.Reader) (int64, imageData, er
 
 	data, err := base64.StdEncoding.DecodeString(builder.String())
 	if err != nil {
-		util.LogError(err)
+		log.Errorf("Failed to decode thumbnail: %v", err)
 		return read, imageData{}, nil
 	}
 	return read, imageData{width, height, data}, nil

@@ -1,6 +1,7 @@
 package procfs
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"os/exec"
@@ -35,7 +36,7 @@ func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*CpuInfo, error) {
 
 	cpuInfoBytes, err := os.ReadFile(cpuInfoPath)
 	if err != nil {
-		return info, err
+		return info, fmt.Errorf("failed to read cpu info: %w", err)
 	}
 	cpuInfo := string(cpuInfoBytes)
 
@@ -46,15 +47,15 @@ func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*CpuInfo, error) {
 	}
 
 	if out, err := exec.Command("getconf", "LONG_BIT").Output(); err == nil {
-		info.Bits = strings.TrimSpace(string(out)) + "bit"
+		info.Bits = fmt.Sprintf("%sbit", strings.TrimSpace(string(out)))
 	} else {
-		return info, err
+		return info, fmt.Errorf("failed to run 'getconf LONG_BIT': %w", err)
 	}
 
 	if out, err := exec.Command("uname", "-m").Output(); err == nil {
 		info.Processor = strings.TrimSpace(string(out))
 	} else {
-		return info, err
+		return info, fmt.Errorf("failed to run 'uname -m': %w", err)
 	}
 
 	if match := modelNameRegex.FindStringSubmatch(cpuInfo); match != nil {
@@ -91,7 +92,7 @@ func getCpuTimesImpl(procStatPath string) (CpuTimes, error) {
 
 	procStatBytes, err := os.ReadFile(procStatPath)
 	if err != nil {
-		return times, err
+		return times, fmt.Errorf("failed reading %q: %w", procStatPath, err)
 	}
 	procStats := string(procStatBytes)
 
@@ -105,7 +106,7 @@ func getCpuTimesImpl(procStatPath string) (CpuTimes, error) {
 			for index, part := range parts {
 				time, err := strconv.ParseInt(part, 10, 64)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("failed to parse cpu time: %w", err)
 				}
 				_times[index] = time
 			}
@@ -145,12 +146,12 @@ func getCpuTempImpl(thermalZonePath string) (float64, error) {
 
 	tempBytes, err := os.ReadFile(thermalZonePath)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to read %q: %w", thermalZonePath, err)
 	}
 
 	temp, err := strconv.ParseInt(strings.TrimSpace(string(tempBytes)), 10, 0)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to parse cpu temp: %w", err)
 	}
 
 	return math.Round(float64(temp)/10.0) / 100.0, nil
