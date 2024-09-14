@@ -1,8 +1,9 @@
 package procfs
 
 import (
-	"gotest.tools/assert"
 	"testing"
+
+	"gotest.tools/assert"
 )
 
 func TestLoadAvg(t *testing.T) {

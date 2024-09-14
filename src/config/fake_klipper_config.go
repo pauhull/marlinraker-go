@@ -2,8 +2,9 @@ package config
 
 import (
 	"fmt"
-	"github.com/samber/lo"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 func GenerateFakeKlipperConfig(config *Config) (map[string]any, map[string]any) {
@@ -41,17 +42,17 @@ func GenerateFakeKlipperConfig(config *Config) (map[string]any, map[string]any) 
 	configuration := stringifySettings(settings)
 
 	for name, macro := range config.Macros {
-		macroJson := map[string]any{
+		macroJSON := map[string]any{
 			"gcode": macro.Gcode,
 		}
 		if macro.RenameExisting != "" {
-			macroJson["rename_existing"] = strings.ToUpper(macro.RenameExisting)
+			macroJSON["rename_existing"] = strings.ToUpper(macro.RenameExisting)
 		}
 		for name, value := range macro.Variables {
-			macroJson["variable_"+name] = value
+			macroJSON["variable_"+name] = value
 		}
-		settings["gcode_macro "+strings.ToLower(name)] = macroJson
-		configuration["gcode_macro "+strings.ToUpper(name)] = macroJson
+		settings["gcode_macro "+strings.ToLower(name)] = macroJSON
+		configuration["gcode_macro "+strings.ToUpper(name)] = macroJSON
 	}
 
 	return settings, configuration

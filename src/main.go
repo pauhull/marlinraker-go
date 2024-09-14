@@ -3,7 +3,14 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strconv"
+	"syscall"
+
 	log "github.com/sirupsen/logrus"
+
 	"marlinraker/src/api"
 	"marlinraker/src/config"
 	"marlinraker/src/database"
@@ -11,11 +18,6 @@ import (
 	"marlinraker/src/logger"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/service"
-	"os"
-	"os/signal"
-	"path/filepath"
-	"strconv"
-	"syscall"
 )
 
 func main() {
@@ -83,7 +85,7 @@ func main() {
 
 	go api.StartServer()
 
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt)
 
 	<-ch

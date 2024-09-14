@@ -1,9 +1,10 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/marlinraker/temp_store"
-	"net/http"
 )
 
 type ServerTemperatureStoreResult temp_store.TempStore

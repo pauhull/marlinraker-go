@@ -2,19 +2,21 @@ package system_info
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
+
 	"marlinraker/src/api/notification"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/system_info/procfs"
-	"sync"
-	"time"
 )
 
 type snapshot struct {
 	Time     float64 `json:"time"`
-	CpuUsage float64 `json:"cpu_usage"`
+	CPUUsage float64 `json:"cpu_usage"`
 	Memory   int64   `json:"memory"`
 	MemUnits string  `json:"mem_units"`
 }
@@ -22,23 +24,23 @@ type snapshot struct {
 type ProcStats struct {
 	MoonrakerStats       []snapshot            `json:"moonraker_stats"`
 	ThrottledState       procfs.ThrottledState `json:"throttled_state"`
-	CpuTemp              float64               `json:"cpu_temp"`
+	CPUTemp              float64               `json:"cpu_temp"`
 	Network              procfs.NetworkStats   `json:"network"`
-	SystemCpuUsage       procfs.CpuUsage       `json:"system_cpu_usage"`
+	SystemCPUUsage       procfs.CPUUsage       `json:"system_cpu_usage"`
 	SystemUptime         float64               `json:"system_uptime"`
 	WebsocketConnections int                   `json:"websocket_connections"`
 }
 
 type ProcStat struct {
 	MoonrakerStats       snapshot            `json:"moonraker_stats"`
-	CpuTemp              float64             `json:"cpu_temp"`
+	CPUTemp              float64             `json:"cpu_temp"`
 	Network              procfs.NetworkStats `json:"network"`
-	SystemCpuUsage       procfs.CpuUsage     `json:"system_cpu_usage"`
+	SystemCPUUsage       procfs.CPUUsage     `json:"system_cpu_usage"`
 	WebsocketConnections int                 `json:"websocket_connections"`
 }
 
 var (
-	lastTimes        procfs.CpuTimes
+	lastTimes        procfs.CPUTimes
 	lastNetworkStats *procfs.TimedNetworkStats
 	statsMutex       = &sync.RWMutex{}
 	stats            = &ProcStats{}
@@ -48,7 +50,7 @@ func Run() {
 	printer_objects.RegisterObject("system_stats", systemStatsObject{})
 
 	var err error
-	lastTimes, err = procfs.GetCpuTimes()
+	lastTimes, err = procfs.GetCPUTimes()
 	if err != nil {
 		log.Errorf("Failed to get CPU times: %v", err)
 		return
@@ -87,7 +89,7 @@ func takeSnapshot() error {
 
 	now := float64(time.Now().UnixMilli()) / 1000.0
 
-	currentTimes, err := procfs.GetCpuTimes()
+	currentTimes, err := procfs.GetCPUTimes()
 	if err != nil {
 		return fmt.Errorf("failed to get CPU times: %w", err)
 	}
@@ -97,13 +99,13 @@ func takeSnapshot() error {
 		return fmt.Errorf("failed to get used memory: %w", err)
 	}
 
-	stats.SystemCpuUsage = procfs.GetCpuUsage(lastTimes, currentTimes)
+	stats.SystemCPUUsage = procfs.GetCPUUsage(lastTimes, currentTimes)
 	lastTimes = currentTimes
-	avgCpuUsage := stats.SystemCpuUsage["cpu"]
+	avgCPUUsage := stats.SystemCPUUsage["cpu"]
 
 	stats.MoonrakerStats = append(stats.MoonrakerStats, snapshot{
 		Time:     now,
-		CpuUsage: avgCpuUsage,
+		CPUUsage: avgCPUUsage,
 		Memory:   usedMem,
 		MemUnits: memUnits,
 	})
@@ -112,7 +114,7 @@ func takeSnapshot() error {
 		stats.MoonrakerStats = stats.MoonrakerStats[1:]
 	}
 
-	stats.CpuTemp, err = procfs.GetCpuTemp()
+	stats.CPUTemp, err = procfs.GetCPUTemp()
 	if err != nil {
 		return fmt.Errorf("failed to get CPU temp: %w", err)
 	}
@@ -142,9 +144,9 @@ func takeSnapshot() error {
 
 	notify := notification.New("notify_proc_stat_update", []any{ProcStat{
 		MoonrakerStats:       lo.Must(lo.Last(stats.MoonrakerStats)),
-		CpuTemp:              stats.CpuTemp,
+		CPUTemp:              stats.CPUTemp,
 		Network:              stats.Network,
-		SystemCpuUsage:       stats.SystemCpuUsage,
+		SystemCPUUsage:       stats.SystemCPUUsage,
 		WebsocketConnections: stats.WebsocketConnections,
 	}})
 

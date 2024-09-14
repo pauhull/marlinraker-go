@@ -10,11 +10,11 @@ import (
 	"strings"
 )
 
-type CpuInfo struct {
-	CpuCount     int    `json:"cpu_count"`
+type CPUInfo struct {
+	CPUCount     int    `json:"cpu_count"`
 	Bits         string `json:"bits"`
 	Processor    string `json:"processor"`
-	CpuDesc      string `json:"cpu_desc"`
+	CPUDesc      string `json:"cpu_desc"`
 	SerialNumber string `json:"serial_number"`
 	HardwareDesc string `json:"hardware_desc"`
 	Model        string `json:"model"`
@@ -30,9 +30,9 @@ var (
 	processorRegex = regexp.MustCompile(`(?m)^processor\s*: [0-9]+$`)
 )
 
-func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*CpuInfo, error) {
+func getCPUInfoImpl(cpuInfoPath string, memInfoPath string) (*CPUInfo, error) {
 
-	info := &CpuInfo{}
+	info := &CPUInfo{}
 
 	cpuInfoBytes, err := os.ReadFile(cpuInfoPath)
 	if err != nil {
@@ -41,9 +41,9 @@ func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*CpuInfo, error) {
 	cpuInfo := string(cpuInfoBytes)
 
 	if matches := processorRegex.FindAllString(cpuInfo, -1); matches != nil {
-		info.CpuCount = len(matches)
+		info.CPUCount = len(matches)
 	} else {
-		info.CpuCount = 1
+		info.CPUCount = 1
 	}
 
 	if out, err := exec.Command("getconf", "LONG_BIT").Output(); err == nil {
@@ -59,7 +59,7 @@ func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*CpuInfo, error) {
 	}
 
 	if match := modelNameRegex.FindStringSubmatch(cpuInfo); match != nil {
-		info.CpuDesc = match[1]
+		info.CPUDesc = match[1]
 	}
 
 	if match := serialRegex.FindStringSubmatch(cpuInfo); match != nil {
@@ -82,13 +82,13 @@ func getCpuInfoImpl(cpuInfoPath string, memInfoPath string) (*CpuInfo, error) {
 	return info, nil
 }
 
-type CpuTimes = map[string][]int64
+type CPUTimes = map[string][]int64
 
 var cpuRegex = regexp.MustCompile(`(?m)^(cpu[0-9]*)\s*(.*)$`)
 
-func getCpuTimesImpl(procStatPath string) (CpuTimes, error) {
+func getCPUTimesImpl(procStatPath string) (CPUTimes, error) {
 
-	times := make(CpuTimes)
+	times := make(CPUTimes)
 
 	procStatBytes, err := os.ReadFile(procStatPath)
 	if err != nil {
@@ -118,17 +118,17 @@ func getCpuTimesImpl(procStatPath string) (CpuTimes, error) {
 	return times, nil
 }
 
-type CpuUsage = map[string]float64
+type CPUUsage = map[string]float64
 
-func GetCpuUsage(lastTimes CpuTimes, currentTimes CpuTimes) CpuUsage {
+func GetCPUUsage(lastTimes CPUTimes, currentTimes CPUTimes) CPUUsage {
 
-	usage := make(CpuUsage)
+	usage := make(CPUUsage)
 
 	for cpu, current := range currentTimes {
 		var (
-			last       = lastTimes[cpu]
-			sum  int64 = 0
-			idle int64 = 0
+			last = lastTimes[cpu]
+			sum  int64
+			idle int64
 		)
 		for i := 0; i < len(current); i++ {
 			sum += current[i] - last[i]
@@ -142,7 +142,7 @@ func GetCpuUsage(lastTimes CpuTimes, currentTimes CpuTimes) CpuUsage {
 	return usage
 }
 
-func getCpuTempImpl(thermalZonePath string) (float64, error) {
+func getCPUTempImpl(thermalZonePath string) (float64, error) {
 
 	tempBytes, err := os.ReadFile(thermalZonePath)
 	if err != nil {

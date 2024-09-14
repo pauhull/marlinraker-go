@@ -1,10 +1,12 @@
 package executors
 
 import (
-	log "github.com/sirupsen/logrus"
-	"marlinraker/src/marlinraker/connections"
 	"net/http"
 	"syscall"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/marlinraker/connections"
 )
 
 func PrinterRestart(*connections.Connection, *http.Request, Params) (any, error) {

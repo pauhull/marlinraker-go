@@ -1,8 +1,9 @@
 package procfs
 
 import (
-	"gotest.tools/assert"
 	"testing"
+
+	"gotest.tools/assert"
 )
 
 func TestMemAvail(t *testing.T) {

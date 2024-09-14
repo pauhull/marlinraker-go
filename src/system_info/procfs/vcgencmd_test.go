@@ -1,10 +1,11 @@
 package procfs
 
 import (
+	"testing"
+
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/samber/lo"
 	"gotest.tools/assert"
-	"testing"
 )
 
 func TestThrottledState(t *testing.T) {

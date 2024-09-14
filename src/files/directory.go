@@ -3,11 +3,13 @@ package files
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/afero"
-	"marlinraker/src/api/notification"
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/spf13/afero"
+
+	"marlinraker/src/api/notification"
 )
 
 type RootInfo struct {
@@ -54,7 +56,7 @@ func GetDirInfo(path string, extended bool) (DirectoryInfo, error) {
 	diskPath := filepath.Join(DataDir, path)
 	dirContent, err := afero.ReadDir(Fs, diskPath)
 	if err != nil {
-		return DirectoryInfo{}, err
+		return DirectoryInfo{}, fmt.Errorf("failed to read directory %q: %w", diskPath, err)
 	}
 
 	dirs, files := make([]DirectoryMeta, 0), make([]any, 0)
@@ -77,7 +79,7 @@ func GetDirInfo(path string, extended bool) (DirectoryInfo, error) {
 			if extended && root.Name == "gcodes" {
 				relPath, err := filepath.Rel("gcodes/", filepath.Join(path, file.Name()))
 				if err != nil {
-					return DirectoryInfo{}, err
+					return DirectoryInfo{}, fmt.Errorf("failed to get relative path: %w", err)
 				}
 				if metadata, _ = LoadOrScanMetadata(relPath); metadata != nil {
 					metadata.FileName = file.Name()
@@ -99,7 +101,7 @@ func GetDirInfo(path string, extended bool) (DirectoryInfo, error) {
 	var stat syscall.Statfs_t
 	err = syscall.Statfs(diskPath, &stat)
 	if err != nil {
-		return DirectoryInfo{}, err
+		return DirectoryInfo{}, fmt.Errorf("failed to get disk usage: %w", err)
 	}
 	total := uint64(stat.Bsize) * stat.Blocks
 	free := uint64(stat.Bsize) * stat.Bfree
@@ -134,12 +136,12 @@ func CreateDir(path string) (DirectoryAction, error) {
 	diskPath := filepath.Join(DataDir, path)
 	err = Fs.Mkdir(diskPath, 0755)
 	if err != nil {
-		return action, err
+		return action, fmt.Errorf("failed to create directory %q: %w", diskPath, err)
 	}
 
 	stat, err := Fs.Stat(diskPath)
 	if err != nil {
-		return action, err
+		return action, fmt.Errorf("failed to stat directory %q: %w", diskPath, err)
 	}
 
 	action.Item = ActionItem{
@@ -151,7 +153,10 @@ func CreateDir(path string) (DirectoryAction, error) {
 	}
 
 	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
-	return action, err
+	if err != nil {
+		return DirectoryAction{}, fmt.Errorf("failed to publish notification: %w", err)
+	}
+	return action, nil
 }
 
 func DeleteDir(path string, force bool) (DirectoryAction, error) {
@@ -169,7 +174,7 @@ func DeleteDir(path string, force bool) (DirectoryAction, error) {
 	diskPath := filepath.Join(DataDir, path)
 	stat, err := Fs.Stat(diskPath)
 	if err != nil {
-		return action, err
+		return action, fmt.Errorf("failed to stat directory %q: %w", diskPath, err)
 	}
 
 	if !stat.IsDir() {
@@ -181,7 +186,7 @@ func DeleteDir(path string, force bool) (DirectoryAction, error) {
 
 	files, err := afero.ReadDir(Fs, diskPath)
 	if err != nil {
-		return action, err
+		return action, fmt.Errorf("failed to read directory %q: %w", diskPath, err)
 	}
 	if !force && len(files) > 0 {
 		return action, errors.New("directory is not empty")
@@ -189,7 +194,7 @@ func DeleteDir(path string, force bool) (DirectoryAction, error) {
 
 	err = Fs.RemoveAll(diskPath)
 	if err != nil {
-		return action, err
+		return action, fmt.Errorf("failed to remove directory %q: %w", diskPath, err)
 	}
 
 	action.Item = ActionItem{
@@ -201,5 +206,8 @@ func DeleteDir(path string, force bool) (DirectoryAction, error) {
 	}
 
 	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
-	return action, err
+	if err != nil {
+		return DirectoryAction{}, fmt.Errorf("failed to publish notification: %w", err)
+	}
+	return action, nil
 }

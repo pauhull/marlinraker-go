@@ -3,11 +3,12 @@ package printer_objects
 import (
 	"errors"
 	"fmt"
+	"reflect"
+	"sync"
+
 	"marlinraker/src/api/notification"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/system_info/procfs"
-	"reflect"
-	"sync"
 )
 
 type QueryResult map[string]any
@@ -41,7 +42,12 @@ func Query(name string) (QueryResult, error) {
 	if !exists {
 		return QueryResult{}, nil
 	}
-	return object.Query()
+
+	result, err := object.Query()
+	if err != nil {
+		return nil, fmt.Errorf("failed to query object: %w", err)
+	}
+	return result, nil
 }
 
 func EmitObject(names ...string) error {

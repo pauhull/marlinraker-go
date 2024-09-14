@@ -1,11 +1,12 @@
 package files
 
 import (
+	"path/filepath"
+	"testing"
+
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/spf13/afero"
 	"gotest.tools/assert"
-	"path/filepath"
-	"testing"
 )
 
 func BenchmarkScanMetadata(b *testing.B) {

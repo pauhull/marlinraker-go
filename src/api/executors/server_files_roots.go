@@ -1,9 +1,10 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
 )
 
 type ServerFilesRootsResult []files.FileRoot

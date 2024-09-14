@@ -9,9 +9,9 @@ import (
 )
 
 type SdInfo struct {
-	ManufacturerId   string `json:"manufacturer_id,omitempty"`
+	ManufacturerID   string `json:"manufacturer_id,omitempty"`
 	Manufacturer     string `json:"manufacturer,omitempty"`
-	OemId            string `json:"oem_id,omitempty"`
+	OemID            string `json:"oem_id,omitempty"`
 	ProductName      string `json:"product_name,omitempty"`
 	ProductRevision  string `json:"product_revision,omitempty"`
 	SerialNumber     string `json:"serial_number,omitempty"`
@@ -45,16 +45,16 @@ func getSdInfoImpl(cidPath string, csdPath string) (*SdInfo, error) {
 		return info, fmt.Errorf("failed to decode csd: %w", err)
 	}
 
-	info.ManufacturerId = cid[:2]
-	info.OemId = cid[2:6]
+	info.ManufacturerID = cid[:2]
+	info.OemID = cid[2:6]
 	info.SerialNumber = cid[18:26]
 
 	var exists bool
-	if info.Manufacturer, exists = manufacturers[info.ManufacturerId]; !exists {
+	if info.Manufacturer, exists = manufacturers[info.ManufacturerID]; !exists {
 		info.Manufacturer = "Unknown"
 	}
 
-	if info.ProductName, err = hexToAscii(cid[6:16]); err != nil {
+	if info.ProductName, err = hexToASCII(cid[6:16]); err != nil {
 		return nil, fmt.Errorf("failed to parse product name: %w", err)
 	}
 
@@ -90,7 +90,7 @@ func getSdInfoImpl(cidPath string, csdPath string) (*SdInfo, error) {
 	return info, nil
 }
 
-func hexToAscii(encoded string) (string, error) {
+func hexToASCII(encoded string) (string, error) {
 	bytes, err := hex.DecodeString(encoded)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode hex string: %w", err)

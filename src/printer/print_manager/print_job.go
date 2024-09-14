@@ -3,17 +3,20 @@ package print_manager
 import (
 	"bufio"
 	"errors"
-	log "github.com/sirupsen/logrus"
+	"fmt"
 	"io"
-	"marlinraker/src/files"
-	"marlinraker/src/printer/parser"
-	"marlinraker/src/shared"
-	"marlinraker/src/util"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/files"
+	"marlinraker/src/printer/parser"
+	"marlinraker/src/shared"
+	"marlinraker/src/util"
 )
 
 type printJob struct {
@@ -25,7 +28,6 @@ type printJob struct {
 	isPaused       atomic.Bool
 	isStarted      atomic.Bool
 	hasEnded       atomic.Bool
-	reader         *bufio.Reader
 	position       atomic.Int64
 	fileSize       int64
 	progress       util.ThreadSafe[float64]
@@ -60,12 +62,12 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 
 	stat, err := files.Fs.Stat(job.filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to stat file %q: %w", job.filePath, err)
 	}
 
 	file, err := files.Fs.OpenFile(job.filePath, os.O_RDONLY, 0)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open file %q: %w", job.filePath, err)
 	}
 
 	now := time.Now()
@@ -99,10 +101,7 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 			position := job.position.Add(read)
 			job.progress.Store(float64(position) / float64(job.fileSize))
 
-			if canceled, err := job.nextLine(line); err != nil || canceled {
-				if err != nil {
-					log.Errorf("Failed to process line %q: %v", line, err)
-				}
+			if canceled := job.nextLine(line); canceled {
 				return
 			}
 		}
@@ -113,11 +112,11 @@ func (job *printJob) start(context shared.ExecutorContext) error {
 	return nil
 }
 
-func (job *printJob) nextLine(line string) (bool, error) {
+func (job *printJob) nextLine(line string) bool {
 
 	gcode := parser.CleanGcode(line)
 	if gcode == "" {
-		return false, nil
+		return false
 	}
 
 	context := job.manager.printer.MainExecutorContext()
@@ -125,16 +124,16 @@ func (job *printJob) nextLine(line string) (bool, error) {
 	select {
 	case <-context.Pending():
 	case <-job.cancelCh:
-		return true, nil
+		return true
 	}
 
 	select {
 	case <-job.pauseCh:
 	case <-job.cancelCh:
-		return true, nil
+		return true
 	}
 	<-context.QueueGcode(gcode, true)
-	return false, nil
+	return false
 }
 
 func (job *printJob) pause(context shared.ExecutorContext) bool {
@@ -146,7 +145,9 @@ func (job *printJob) pause(context shared.ExecutorContext) bool {
 		job.printDuration.Do(func(duration time.Duration) time.Duration {
 			return duration + now.Sub(job.lastResumeTime.Load())
 		})
-		job.manager.setState("paused")
+		if err := job.manager.setState("paused"); err != nil {
+			log.Errorf("Failed to set state to %q: %v", "paused", err)
+		}
 		return true
 	}
 	return false
@@ -158,7 +159,9 @@ func (job *printJob) resume(context shared.ExecutorContext) bool {
 		job.isPaused.Store(false)
 		close(job.pauseCh)
 		job.lastResumeTime.Store(time.Now())
-		job.manager.setState("printing")
+		if err := job.manager.setState("printing"); err != nil {
+			log.Errorf("Failed to set state to printing: %v", err)
+		}
 		return true
 	}
 	return false
@@ -184,7 +187,10 @@ func (job *printJob) finish(state string, context shared.ExecutorContext) {
 			return duration + now.Sub(job.lastResumeTime.Load())
 		})
 	}
-	job.manager.setState(state)
+	err := job.manager.setState(state)
+	if err != nil {
+		log.Errorf("Failed to set state to %q: %v", state, err)
+	}
 }
 
 func (job *printJob) waitForPrintMoves(context shared.ExecutorContext) {
@@ -194,10 +200,9 @@ func (job *printJob) waitForPrintMoves(context shared.ExecutorContext) {
 func (job *printJob) getTotalTime() time.Duration {
 	if job.hasEnded.Load() {
 		return job.endTime.Load().Sub(job.startTime.Load())
-	} else {
-		now := time.Now()
-		return now.Sub(job.startTime.Load())
 	}
+	now := time.Now()
+	return now.Sub(job.startTime.Load())
 }
 
 func (job *printJob) getPrintTime() time.Duration {

@@ -1,11 +1,12 @@
 package executors
 
 import (
+	"net/http"
+	"strconv"
+
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/util"
-	"net/http"
-	"strconv"
 )
 
 func PrinterPrintStart(_ *connections.Connection, _ *http.Request, params Params) (any, error) {

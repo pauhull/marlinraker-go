@@ -3,13 +3,15 @@ package printer
 import (
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"marlinraker/src/marlinraker/gcode_store"
-	"marlinraker/src/printer/parser"
-	"marlinraker/src/shared"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/marlinraker/gcode_store"
+	"marlinraker/src/printer/parser"
+	"marlinraker/src/shared"
 )
 
 type command struct {

@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://golangci-lint.run/jsonschema/golangci.jsonschema.json
+linters:
+  presets:
+    - bugs
+    - error
+    - import
+    - metalinter
+    - module
+    - unused
+
+  enable:
+    - testifylint
+
+  disable:
+    - err113
+    - depguard
+    - unused
+
+issues:
+  exclude-rules:
+    - linters: ["revive"]
+      text: "don't use an underscore in package name"
+
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - default
+      - localmodule
+
+  wrapcheck:
+    ignoreSigs:
+      - util.NewError(
+      - util.NewErrorf(
+      - errors.New(
+      - errors.Join(
+      - fmt.Errorf(
+
+  gosec:
+    excludes:
+      - G306
+      # allow all file permissions
+      #- G303
+
+  exhaustive:
+    default-signifies-exhaustive: true

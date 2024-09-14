@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/base32"
-	"github.com/samber/lo"
+	"fmt"
 	"sync"
 	"time"
+
+	"github.com/samber/lo"
 )
 
 type oneshotToken struct {
@@ -24,7 +26,7 @@ func GenerateOneshotToken() (string, error) {
 	buf := make([]byte, 20)
 	for {
 		if _, err := rand.Read(buf); err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to generate random bytes: %w", err)
 		}
 		oneshotTokensMutex.RLock()
 		_, found := lo.Find(oneshotTokens, func(token oneshotToken) bool {
@@ -55,7 +57,7 @@ func GenerateOneshotToken() (string, error) {
 func ConsumeOneshotToken(base32 string) (bool, error) {
 	buf, err := encoding.DecodeString(base32)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to decode base32: %w", err)
 	}
 	return consumeOneshotToken(buf), nil
 }

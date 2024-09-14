@@ -1,6 +1,10 @@
 package macros
 
-import "marlinraker/src/shared"
+import (
+	"fmt"
+
+	"marlinraker/src/shared"
+)
 
 type renamedMacro struct {
 	description string
@@ -12,5 +16,9 @@ func (macro renamedMacro) Description() string {
 }
 
 func (macro renamedMacro) Execute(manager *MacroManager, context shared.ExecutorContext, rawParams []string, objects Objects, params Params) error {
-	return macro.original.Execute(manager, context, rawParams, objects, params)
+	err := macro.original.Execute(manager, context, rawParams, objects, params)
+	if err != nil {
+		return fmt.Errorf("failed to execute macro: %w", err)
+	}
+	return nil
 }

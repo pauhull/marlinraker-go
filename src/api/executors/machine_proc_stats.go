@@ -1,9 +1,10 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/system_info"
-	"net/http"
 )
 
 type MachineProcStatsResult = system_info.ProcStats

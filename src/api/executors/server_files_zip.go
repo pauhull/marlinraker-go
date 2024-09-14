@@ -1,9 +1,11 @@
 package executors
 
 import (
+	"fmt"
+	"net/http"
+
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
 )
 
 type ServerFilesZipResult files.ZipAction
@@ -19,5 +21,9 @@ func ServerFilesZip(_ *connections.Connection, _ *http.Request, params Params) (
 
 	storeOnly, _ := params.GetBool("store_only")
 
-	return files.CreateArchive(dest, items, !storeOnly)
+	action, err := files.CreateArchive(dest, items, !storeOnly)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create archive: %w", err)
+	}
+	return action, nil
 }

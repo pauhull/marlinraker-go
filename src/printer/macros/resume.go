@@ -1,6 +1,10 @@
 package macros
 
-import "marlinraker/src/shared"
+import (
+	"fmt"
+
+	"marlinraker/src/shared"
+)
 
 type resumeMacro struct{}
 
@@ -9,5 +13,9 @@ func (resumeMacro) Description() string {
 }
 
 func (resumeMacro) Execute(manager *MacroManager, context shared.ExecutorContext, _ []string, _ Objects, _ Params) error {
-	return manager.printer.GetPrintManager().Resume(context)
+	err := manager.printer.GetPrintManager().Resume(context)
+	if err != nil {
+		return fmt.Errorf("failed to resume print: %w", err)
+	}
+	return nil
 }

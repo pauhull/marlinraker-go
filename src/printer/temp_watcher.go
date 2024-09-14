@@ -1,14 +1,16 @@
 package printer
 
 import (
-	log "github.com/sirupsen/logrus"
-	"marlinraker/src/marlinraker/temp_store"
-	"marlinraker/src/printer/parser"
-	"marlinraker/src/printer_objects"
 	"math"
 	"regexp"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/marlinraker/temp_store"
+	"marlinraker/src/printer/parser"
+	"marlinraker/src/printer_objects"
 )
 
 type heaterObject struct {

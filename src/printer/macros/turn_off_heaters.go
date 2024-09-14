@@ -1,8 +1,9 @@
 package macros
 
 import (
-	"marlinraker/src/shared"
 	"strings"
+
+	"marlinraker/src/shared"
 )
 
 type turnOffHeatersMacro struct{}

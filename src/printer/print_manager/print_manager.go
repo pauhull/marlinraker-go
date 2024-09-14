@@ -3,14 +3,17 @@ package print_manager
 import (
 	"errors"
 	"fmt"
-	"marlinraker/src/files"
-	"marlinraker/src/printer_objects"
-	"marlinraker/src/shared"
-	"marlinraker/src/util"
 	"path/filepath"
 	"regexp"
 	"sync/atomic"
 	"time"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/files"
+	"marlinraker/src/printer_objects"
+	"marlinraker/src/shared"
+	"marlinraker/src/util"
 )
 
 type PrintManager struct {
@@ -42,7 +45,9 @@ func NewPrintManager(printer shared.Printer) *PrintManager {
 				return
 			case <-manager.ticker.C:
 				if manager.isPrinting(manager.currentJob.Load(), manager.state.Load()) {
-					manager.emit()
+					if err := manager.emit(); err != nil {
+						log.Errorf("Print manager: error emitting print status: %v", err)
+					}
 				}
 			}
 		}
@@ -72,10 +77,12 @@ func (manager *PrintManager) SelectFile(fileName string) error {
 	}
 	diskPath := filepath.Join(files.DataDir, "gcodes", fileName)
 	if _, err := files.Fs.Stat(diskPath); err != nil {
-		return err
+		return fmt.Errorf("cannot stat %q: %w", fileName, err)
 	}
 	manager.currentJob.Store(newPrintJob(manager, fileName))
-	manager.emit()
+	if err := manager.emit(); err != nil {
+		return fmt.Errorf("failed emitting print status: %w", err)
+	}
 	return nil
 }
 

@@ -1,13 +1,15 @@
 package executors
 
 import (
-	log "github.com/sirupsen/logrus"
-	"marlinraker/src/files"
-	"marlinraker/src/marlinraker/connections"
 	"net/http"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/files"
+	"marlinraker/src/marlinraker/connections"
 )
 
 type ServerLogsRolloverResult struct {

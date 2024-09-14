@@ -2,6 +2,7 @@ package system_info
 
 import (
 	"fmt"
+
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/system_info/procfs"
 )

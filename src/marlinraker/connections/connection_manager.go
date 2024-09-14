@@ -2,23 +2,25 @@ package connections
 
 import (
 	"fmt"
+	"sync"
+	"sync/atomic"
+
 	"github.com/gorilla/websocket"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
+
 	"marlinraker/src/util"
-	"sync"
-	"sync/atomic"
 )
 
 type Connection struct {
 	socket     *websocket.Conn
 	mutex      *sync.Mutex
 	Identified bool
-	Id         int
+	ID         int
 	ClientName string
 	Version    string
 	ClientType string
-	Url        string
+	URL        string
 }
 
 func (connection *Connection) WriteText(bytes []byte) error {
@@ -31,7 +33,7 @@ func (connection *Connection) WriteText(bytes []byte) error {
 	return nil
 }
 
-func (connection *Connection) WriteJson(v any) error {
+func (connection *Connection) WriteJSON(v any) error {
 	connection.mutex.Lock()
 	defer connection.mutex.Unlock()
 	err := connection.socket.WriteJSON(v)
@@ -43,7 +45,7 @@ func (connection *Connection) WriteJson(v any) error {
 
 var (
 	connections     = util.NewThreadSafe(make([]Connection, 0))
-	nextWebsocketId atomic.Int32
+	nextWebsocketID atomic.Int32
 )
 
 func GetConnections() []Connection {
@@ -51,11 +53,11 @@ func GetConnections() []Connection {
 }
 
 func RegisterConnection(socket *websocket.Conn) *Connection {
-	id := nextWebsocketId.Add(1)
+	id := nextWebsocketID.Add(1)
 	connection := Connection{
 		socket: socket,
 		mutex:  &sync.Mutex{},
-		Id:     int(id),
+		ID:     int(id),
 	}
 	connections.Do(func(connections []Connection) []Connection {
 		return append(connections, connection)
@@ -66,7 +68,7 @@ func RegisterConnection(socket *websocket.Conn) *Connection {
 func UnregisterConnection(connection *Connection) {
 	connections.Do(func(connections []Connection) []Connection {
 		return lo.Filter(connections, func(_connection Connection, _ int) bool {
-			return _connection.Id != connection.Id
+			return _connection.ID != connection.ID
 		})
 	})
 }

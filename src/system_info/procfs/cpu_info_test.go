@@ -1,60 +1,61 @@
 package procfs
 
 import (
+	"testing"
+
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"gotest.tools/assert"
-	"testing"
 )
 
-func TestCpuInfo(t *testing.T) {
+func TestCPUInfo(t *testing.T) {
 
 	t.Run("1", func(t *testing.T) {
-		info, err := getCpuInfoImpl("testdata/cpuinfo1", "testdata/meminfo1")
+		info, err := getCPUInfoImpl("testdata/cpuinfo1", "testdata/meminfo1")
 		assert.NilError(t, err)
 		assert.Check(t, info.Bits == "32bit" || info.Bits == "64bit", info.Bits)
 		assert.Check(t, info.Processor != "", info.Processor)
-		assert.DeepEqual(t, info, &CpuInfo{
-			CpuCount:     8,
-			CpuDesc:      "Intel(R) Core(TM) i7-6700K CPU @ 4.00GHz",
+		assert.DeepEqual(t, info, &CPUInfo{
+			CPUCount:     8,
+			CPUDesc:      "Intel(R) Core(TM) i7-6700K CPU @ 4.00GHz",
 			SerialNumber: "",
 			HardwareDesc: "",
 			Model:        "",
 			TotalMemory:  32805556,
 			MemoryUnits:  "kB",
-		}, cmpopts.IgnoreFields(CpuInfo{}, "Processor", "Bits"))
+		}, cmpopts.IgnoreFields(CPUInfo{}, "Processor", "Bits"))
 	})
 
 	t.Run("2", func(t *testing.T) {
-		info, err := getCpuInfoImpl("testdata/cpuinfo2", "testdata/meminfo2")
+		info, err := getCPUInfoImpl("testdata/cpuinfo2", "testdata/meminfo2")
 		assert.NilError(t, err)
 		assert.Check(t, info.Bits == "32bit" || info.Bits == "64bit", info.Bits)
 		assert.Check(t, info.Processor != "", info.Processor)
-		assert.DeepEqual(t, info, &CpuInfo{
-			CpuCount:     1,
-			CpuDesc:      "ARMv6-compatible processor rev 7 (v6l)",
+		assert.DeepEqual(t, info, &CPUInfo{
+			CPUCount:     1,
+			CPUDesc:      "ARMv6-compatible processor rev 7 (v6l)",
 			SerialNumber: "00000000ed053e32",
 			HardwareDesc: "BCM2835",
 			Model:        "Raspberry Pi Zero W Rev 1.1",
 			TotalMemory:  439592,
 			MemoryUnits:  "kB",
-		}, cmpopts.IgnoreFields(CpuInfo{}, "Processor", "Bits"))
+		}, cmpopts.IgnoreFields(CPUInfo{}, "Processor", "Bits"))
 	})
 }
 
-func TestCpuUsage(t *testing.T) {
+func TestCPUUsage(t *testing.T) {
 
 	t.Run("1", func(t *testing.T) {
-		last, err := getCpuTimesImpl("testdata/stat1_1")
+		last, err := getCPUTimesImpl("testdata/stat1_1")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		curr, err := getCpuTimesImpl("testdata/stat1_2")
+		curr, err := getCPUTimesImpl("testdata/stat1_2")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		usage := GetCpuUsage(last, curr)
+		usage := GetCPUUsage(last, curr)
 
 		assert.DeepEqual(t, usage, map[string]float64{
 			"cpu":  17.0,
@@ -70,17 +71,17 @@ func TestCpuUsage(t *testing.T) {
 	})
 
 	t.Run("2", func(t *testing.T) {
-		last, err := getCpuTimesImpl("testdata/stat2_1")
+		last, err := getCPUTimesImpl("testdata/stat2_1")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		curr, err := getCpuTimesImpl("testdata/stat2_2")
+		curr, err := getCPUTimesImpl("testdata/stat2_2")
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		usage := GetCpuUsage(last, curr)
+		usage := GetCPUUsage(last, curr)
 
 		assert.DeepEqual(t, usage, map[string]float64{
 			"cpu":  100.0,
@@ -89,8 +90,8 @@ func TestCpuUsage(t *testing.T) {
 	})
 }
 
-func TestCpuTemp(t *testing.T) {
-	_, err := getCpuTempImpl("testdata/temp")
+func TestCPUTemp(t *testing.T) {
+	_, err := getCPUTempImpl("testdata/temp")
 	if err != nil {
 		t.Fatal(err)
 	}

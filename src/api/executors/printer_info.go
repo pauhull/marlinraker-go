@@ -1,12 +1,14 @@
 package executors
 
 import (
+	"fmt"
+	"net/http"
+	"os"
+
 	"marlinraker/src/constants"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/system_info"
-	"net/http"
-	"os"
 )
 
 type PrinterInfoResult struct {
@@ -14,7 +16,7 @@ type PrinterInfoResult struct {
 	StateMessage    string                  `json:"state_message"`
 	Hostname        string                  `json:"hostname"`
 	SoftwareVersion string                  `json:"software_version"`
-	CpuInfo         string                  `json:"cpu_info"`
+	CPUInfo         string                  `json:"cpu_info"`
 	KlipperPath     string                  `json:"klipper_path"`
 	PythonPath      string                  `json:"python_path"`
 	LogFile         string                  `json:"log_file"`
@@ -24,12 +26,12 @@ type PrinterInfoResult struct {
 func PrinterInfo(*connections.Connection, *http.Request, Params) (any, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get hostname: %w", err)
 	}
 
 	systemInfo, err := system_info.GetSystemInfo()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get system info: %w", err)
 	}
 
 	return PrinterInfoResult{
@@ -37,6 +39,6 @@ func PrinterInfo(*connections.Connection, *http.Request, Params) (any, error) {
 		StateMessage:    marlinraker.StateMessage,
 		Hostname:        hostname,
 		SoftwareVersion: constants.Version,
-		CpuInfo:         systemInfo.CpuInfo.CpuDesc,
+		CPUInfo:         systemInfo.CPUInfo.CPUDesc,
 	}, nil
 }

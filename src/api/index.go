@@ -2,19 +2,21 @@ package api
 
 import (
 	_ "embed"
+	"fmt"
 	"html/template"
+	"net/http"
+	"os"
+
 	"marlinraker/src/constants"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/system_info"
-	"net/http"
-	"os"
 )
 
 var (
 	//go:embed index.html
-	indexHtml     string
-	indexTemplate = template.Must(template.New("index.html").Parse(indexHtml))
+	indexHTML     string
+	indexTemplate = template.Must(template.New("index.html").Parse(indexHTML))
 )
 
 type templateData struct {
@@ -32,27 +34,31 @@ func handleIndex(writer http.ResponseWriter, request *http.Request) error {
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get hostname: %w", err)
 	}
 
 	info, err := system_info.GetSystemInfo()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get system info: %w", err)
 	}
 
 	writer.Header().Set("Content-Type", "text/html")
 	writer.WriteHeader(200)
 
-	return indexTemplate.Execute(writer, templateData{
+	err = indexTemplate.Execute(writer, templateData{
 		Hostname:       hostname,
 		RequestIP:      getAddress(request),
 		Version:        constants.Version,
 		WebsocketCount: len(connections.GetConnections()),
 		State:          marlinraker.State,
-		Arch:           info.CpuInfo.Processor,
+		Arch:           info.CPUInfo.Processor,
 		Os:             info.Distribution.Name,
-		CPU:            info.CpuInfo.CpuDesc,
+		CPU:            info.CPUInfo.CPUDesc,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to substitute template: %w", err)
+	}
+	return nil
 }
 
 func getAddress(request *http.Request) string {

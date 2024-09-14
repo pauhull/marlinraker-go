@@ -2,11 +2,13 @@ package scanner
 
 import (
 	"bufio"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"go.bug.st/serial"
+
 	"marlinraker/src/config"
 	"marlinraker/src/database"
-	"time"
 )
 
 var scanning = false

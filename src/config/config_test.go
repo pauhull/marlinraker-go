@@ -1,11 +1,12 @@
 package config
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"gotest.tools/assert"
-	"strings"
-	"testing"
 )
 
 func TestLoadConfig(t *testing.T) {

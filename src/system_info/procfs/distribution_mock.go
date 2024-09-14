@@ -5,7 +5,7 @@ package procfs
 func GetDistribution() (*Distribution, error) {
 	return &Distribution{
 		Name:         "Unknown",
-		Id:           "",
+		ID:           "",
 		Version:      "",
 		VersionParts: versionParts{},
 		Like:         "",

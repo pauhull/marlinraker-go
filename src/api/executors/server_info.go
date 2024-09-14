@@ -1,11 +1,12 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/constants"
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
 )
 
 type ServerInfoResult struct {
@@ -18,8 +19,8 @@ type ServerInfoResult struct {
 	WebsocketCount            int      `json:"websocket_count"`
 	MissingKlippyRequirements []string `json:"missing_klippy_requirements"`
 	MoonrakerVersion          string   `json:"moonraker_version"`
-	ApiVersion                [3]int   `json:"api_version"`
-	ApiVersionString          string   `json:"api_version_string"`
+	APIVersion                [3]int   `json:"api_version"`
+	APIVersionString          string   `json:"api_version_string"`
 	Type                      string   `json:"type"`
 }
 
@@ -34,8 +35,8 @@ func ServerInfo(*connections.Connection, *http.Request, Params) (any, error) {
 		WebsocketCount:            len(connections.GetConnections()),
 		MissingKlippyRequirements: []string{},
 		MoonrakerVersion:          constants.Version,
-		ApiVersion:                constants.ApiVersion,
-		ApiVersionString:          constants.ApiVersionString,
+		APIVersion:                constants.APIVersion,
+		APIVersionString:          constants.APIVersionString,
 		Type:                      "marlinraker",
 	}, nil
 }

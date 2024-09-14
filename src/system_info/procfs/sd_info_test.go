@@ -1,8 +1,9 @@
 package procfs
 
 import (
-	"gotest.tools/assert"
 	"testing"
+
+	"gotest.tools/assert"
 )
 
 func TestSdInfo(t *testing.T) {
@@ -11,9 +12,9 @@ func TestSdInfo(t *testing.T) {
 		info, err := getSdInfoImpl("testdata/cid1", "testdata/csd1")
 		assert.NilError(t, err)
 		assert.DeepEqual(t, info, &SdInfo{
-			ManufacturerId:   "74",
+			ManufacturerID:   "74",
 			Manufacturer:     "PNY",
-			OemId:            "4a60",
+			OemID:            "4a60",
 			ProductName:      "USDU1",
 			ProductRevision:  "2.0",
 			SerialNumber:     "40510971",
@@ -27,9 +28,9 @@ func TestSdInfo(t *testing.T) {
 		info, err := getSdInfoImpl("testdata/cid2", "testdata/csd2")
 		assert.NilError(t, err)
 		assert.DeepEqual(t, info, &SdInfo{
-			ManufacturerId:   "03",
+			ManufacturerID:   "03",
 			Manufacturer:     "Sandisk",
-			OemId:            "5344",
+			OemID:            "5344",
 			ProductName:      "ACLCF",
 			ProductRevision:  "8.0",
 			SerialNumber:     "e3572a1d",

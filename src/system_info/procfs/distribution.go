@@ -15,7 +15,7 @@ type versionParts struct {
 
 type Distribution struct {
 	Name         string       `json:"name"`
-	Id           string       `json:"id"`
+	ID           string       `json:"id"`
 	Version      string       `json:"version"`
 	VersionParts versionParts `json:"version_parts"`
 	Like         string       `json:"like"`
@@ -25,7 +25,7 @@ type Distribution struct {
 var (
 	prettyNameRegex      = regexp.MustCompile(`(?m)^PRETTY_NAME="?(.+?)"?$`)
 	idRegex              = regexp.MustCompile(`(?m)^ID="?(.+?)"?$`)
-	versionIdRegex       = regexp.MustCompile(`(?m)^VERSION_ID="?(.+?)"?$`)
+	versionIDRegex       = regexp.MustCompile(`(?m)^VERSION_ID="?(.+?)"?$`)
 	idLikeRegex          = regexp.MustCompile(`(?m)^ID_LIKE="?(.+?)"?$`)
 	versionCodenameRegex = regexp.MustCompile(`(?m)^VERSION_CODENAME="?(.+?)"?$`)
 )
@@ -45,10 +45,10 @@ func getDistributionImpl(osReleasePath string) (*Distribution, error) {
 	}
 
 	if match := idRegex.FindStringSubmatch(osRelease); match != nil {
-		info.Id = match[1]
+		info.ID = match[1]
 	}
 
-	if match := versionIdRegex.FindStringSubmatch(osRelease); match != nil {
+	if match := versionIDRegex.FindStringSubmatch(osRelease); match != nil {
 		info.Version = match[1]
 		parts := strings.Split(info.Version, ".")
 		info.VersionParts.Major = parts[0]

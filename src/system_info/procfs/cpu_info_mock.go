@@ -6,12 +6,12 @@ import (
 	"runtime"
 )
 
-func GetCpuInfo() (*CpuInfo, error) {
-	return &CpuInfo{
-		CpuCount:     runtime.NumCPU(),
+func GetCPUInfo() (*CPUInfo, error) {
+	return &CPUInfo{
+		CPUCount:     runtime.NumCPU(),
 		Bits:         "",
 		Processor:    "Unknown",
-		CpuDesc:      "",
+		CPUDesc:      "",
 		SerialNumber: "Unknown",
 		HardwareDesc: "",
 		Model:        "Unknown",
@@ -20,10 +20,10 @@ func GetCpuInfo() (*CpuInfo, error) {
 	}, nil
 }
 
-func GetCpuTimes() (CpuTimes, error) {
-	return CpuTimes{}, nil
+func GetCPUTimes() (CPUTimes, error) {
+	return CPUTimes{}, nil
 }
 
-func GetCpuTemp() (float64, error) {
+func GetCPUTemp() (float64, error) {
 	return 0, nil
 }

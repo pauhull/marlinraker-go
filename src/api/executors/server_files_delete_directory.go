@@ -1,9 +1,11 @@
 package executors
 
 import (
+	"fmt"
+	"net/http"
+
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
 )
 
 type ServerFilesDeleteDirectoryResult files.DirectoryAction
@@ -12,10 +14,14 @@ func ServerFilesDeleteDirectory(_ *connections.Connection, _ *http.Request, para
 
 	path, err := params.RequirePath("path")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("path: %w", err)
 	}
 
 	force, _ := params.GetBool("force")
 
-	return files.DeleteDir(path, force)
+	action, err := files.DeleteDir(path, force)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete directory: %w", err)
+	}
+	return action, nil
 }

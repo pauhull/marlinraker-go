@@ -1,9 +1,11 @@
 package executors
 
 import (
+	"fmt"
+	"net/http"
+
 	"marlinraker/src/database"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
 )
 
 type ServerDatabasePostItemResult struct {
@@ -15,21 +17,21 @@ type ServerDatabasePostItemResult struct {
 func ServerDatabasePostItem(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 	namespace, err := params.RequireString("namespace")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("namespace: %w", err)
 	}
 
 	key, err := params.RequireString("key")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("key: %w", err)
 	}
 
 	value, err := params.RequireAny("value")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("value: %w", err)
 	}
 
-	if _, err := database.PostItem(namespace, key, value, false); err != nil {
-		return nil, err
+	if _, err = database.PostItem(namespace, key, value, false); err != nil {
+		return nil, fmt.Errorf("failed to post item: %w", err)
 	}
 
 	return ServerDatabasePostItemResult{

@@ -2,11 +2,17 @@ package api
 
 import (
 	"encoding/base32"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/gorilla/websocket"
 	"github.com/spf13/afero"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 	"gotest.tools/assert"
+
 	"marlinraker/src/api/executors"
 	"marlinraker/src/api/notification"
 	"marlinraker/src/config"
@@ -18,10 +24,6 @@ import (
 	"marlinraker/src/marlinraker/temp_store"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/system_info"
-	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 type TestObject struct{}
@@ -67,9 +69,9 @@ func TestApi(t *testing.T) {
 	printer_objects.RegisterObject("test_object", TestObject{})
 
 	socket, cid := makeConnection(t)
-	defer func(socket *websocket.Conn) {
+	defer func() {
 		_ = socket.Close()
-	}(socket)
+	}()
 
 	testAll(t, "server.info", "GET", "/server/info", executors.Params{},
 		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerInfoResult, error *Error) {
@@ -92,8 +94,8 @@ func TestApi(t *testing.T) {
 				WebsocketCount:            0,
 				MissingKlippyRequirements: []string{},
 				MoonrakerVersion:          constants.Version,
-				ApiVersion:                constants.ApiVersion,
-				ApiVersionString:          constants.ApiVersionString,
+				APIVersion:                constants.APIVersion,
+				APIVersionString:          constants.APIVersionString,
 				Type:                      "marlinraker",
 			}, cmpopts.IgnoreFields(executors.ServerInfoResult{}, "WebsocketCount"))
 		})
@@ -126,14 +128,14 @@ func TestApi(t *testing.T) {
 		}
 
 		assert.DeepEqual(t, result, &executors.ServerConnectionIdentifyResult{},
-			cmpopts.IgnoreFields(executors.ServerConnectionIdentifyResult{}, "ConnectionId"))
+			cmpopts.IgnoreFields(executors.ServerConnectionIdentifyResult{}, "ConnectionID"))
 	})
 
 	testSocket(t, "server.connection.identify", executors.Params{
 		"client_name": "test",
 		"type":        "web",
 		"url":         "example.com",
-	}, func(t *testing.T, result *executors.ServerConnectionIdentifyResult, error *Error) {
+	}, func(t *testing.T, _ *executors.ServerConnectionIdentifyResult, error *Error) {
 
 		assert.Check(t, error != nil)
 		assert.DeepEqual(t, error, &Error{Code: 400, Message: "version param is required"})
@@ -141,7 +143,7 @@ func TestApi(t *testing.T) {
 
 	testAll(t, "server.files.list", "GET", "/server/files/list", executors.Params{
 		"root": "config",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerFilesResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerFilesResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -154,7 +156,7 @@ func TestApi(t *testing.T) {
 	})
 
 	testAll(t, "server.config", "GET", "/server/config", executors.Params{},
-		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerConfigResult, error *Error) {
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerConfigResult, error *Error) {
 
 			if error != nil {
 				t.Fatal(error)
@@ -164,7 +166,7 @@ func TestApi(t *testing.T) {
 		})
 
 	testAll(t, "machine.system_info", "GET", "/machine/system_info", executors.Params{},
-		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.MachineSystemInfoResult, error *Error) {
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.MachineSystemInfoResult, error *Error) {
 
 			if error != nil {
 				t.Fatal(error)
@@ -174,7 +176,7 @@ func TestApi(t *testing.T) {
 		})
 
 	testAll(t, "machine.proc_stats", "GET", "/machine/proc_stats", executors.Params{},
-		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.MachineProcStatsResult, error *Error) {
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.MachineProcStatsResult, error *Error) {
 
 			if error != nil {
 				t.Fatal(error)
@@ -184,7 +186,7 @@ func TestApi(t *testing.T) {
 		})
 
 	testAll(t, "server.database.list", "GET", "/server/database/list", executors.Params{},
-		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseListResult, error *Error) {
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerDatabaseListResult, error *Error) {
 
 			if error != nil {
 				t.Fatal(error)
@@ -198,7 +200,7 @@ func TestApi(t *testing.T) {
 	testAll(t, "server.database.get_item", "GET", "/server/database/item", executors.Params{
 		"namespace": "namespace_1",
 		"key":       "key1",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -215,7 +217,7 @@ func TestApi(t *testing.T) {
 	testAll(t, "server.database.get_item", "GET", "/server/database/item", executors.Params{
 		"namespace": "namespace_1",
 		"key":       "key2",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -232,15 +234,15 @@ func TestApi(t *testing.T) {
 	testAll(t, "server.database.get_item", "GET", "/server/database/item", executors.Params{
 		"namespace": "namespace_1",
 		"key":       "key3",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseGetItemResult, error *Error) {
-		assert.Error(t, error, `failed to get item: key "key3" in namespace "namespace_1" not found`)
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, _ *executors.ServerDatabaseGetItemResult, error *Error) {
+		assert.Error(t, error, `could not get item "key3" from namespace "namespace_1": failed to get item: key not found`)
 	})
 
 	testAll(t, "server.database.post_item", "POST", "/server/database/item", executors.Params{
 		"namespace": "namespace_1",
 		"key":       "key3",
 		"value":     true,
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabasePostItemResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerDatabasePostItemResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -261,10 +263,10 @@ func TestApi(t *testing.T) {
 	testAll(t, "server.database.delete_item", "DELETE", "/server/database/item", executors.Params{
 		"namespace": "test_namespace",
 		"key":       "delete_me",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerDatabaseDeleteItemResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerDatabaseDeleteItemResult, error *Error) {
 
 		_, err := database.GetItem("test_namespace", "delete_me", false)
-		assert.Error(t, err, `failed to get item: key "delete_me" in namespace "test_namespace" not found`)
+		assert.Error(t, err, `failed to get item: key not found`)
 
 		namespaces := database.ListNamespaces()
 		assert.Equal(t, slices.Contains(namespaces, "delete_me"), false)
@@ -286,7 +288,7 @@ func TestApi(t *testing.T) {
 	})
 
 	testAll(t, "printer.info", "GET", "/printer/info", executors.Params{},
-		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterInfoResult, error *Error) {
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.PrinterInfoResult, error *Error) {
 
 			if error != nil {
 				t.Fatal(error)
@@ -307,12 +309,12 @@ func TestApi(t *testing.T) {
 				StateMessage:    marlinraker.StateMessage,
 				Hostname:        hostname,
 				SoftwareVersion: constants.Version,
-				CpuInfo:         systemInfo.CpuInfo.CpuDesc,
+				CPUInfo:         systemInfo.CPUInfo.CPUDesc,
 			})
 		})
 
 	testAll(t, "server.gcode_store", "GET", "/server/gcode_store", executors.Params{},
-		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerGcodeStoreResult, error *Error) {
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerGcodeStoreResult, error *Error) {
 
 			if error != nil {
 				t.Fatal(error)
@@ -322,7 +324,7 @@ func TestApi(t *testing.T) {
 		})
 
 	testAll(t, "server.temperature_store", "GET", "/server/temperature_store", executors.Params{},
-		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerTemperatureStoreResult, error *Error) {
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerTemperatureStoreResult, error *Error) {
 
 			if error != nil {
 				t.Fatal(error)
@@ -350,9 +352,9 @@ func TestApi(t *testing.T) {
 		})
 	})
 
-	testHttp(t, "GET", "/printer/objects/query", executors.Params{
+	testHTTP(t, "GET", "/printer/objects/query", executors.Params{
 		"test_object": "",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterObjectsQueryResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.PrinterObjectsQueryResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -383,9 +385,9 @@ func TestApi(t *testing.T) {
 		})
 	})
 
-	testHttp(t, "GET", "/printer/objects/query", executors.Params{
+	testHTTP(t, "GET", "/printer/objects/query", executors.Params{
 		"test_object": "attribute1,attribute3",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterObjectsQueryResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.PrinterObjectsQueryResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -416,10 +418,10 @@ func TestApi(t *testing.T) {
 		})
 	})
 
-	testHttp(t, "POST", "/printer/objects/subscribe", executors.Params{
+	testHTTP(t, "POST", "/printer/objects/subscribe", executors.Params{
 		"connection_id": cid,
 		"test_object":   "",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterObjectsSubscribeResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.PrinterObjectsSubscribeResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -450,10 +452,10 @@ func TestApi(t *testing.T) {
 		})
 	})
 
-	testHttp(t, "POST", "/printer/objects/subscribe", executors.Params{
+	testHTTP(t, "POST", "/printer/objects/subscribe", executors.Params{
 		"connection_id": cid,
 		"test_object":   "attribute1",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.PrinterObjectsSubscribeResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.PrinterObjectsSubscribeResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -468,7 +470,7 @@ func TestApi(t *testing.T) {
 
 	testAll(t, "printer.gcode.script", "POST", "/printer/gcode/script", executors.Params{
 		"script": "G28",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *string, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *string, error *Error) {
 
 		if result != nil {
 			t.Fatal(result)
@@ -478,7 +480,7 @@ func TestApi(t *testing.T) {
 	})
 
 	testAll(t, "server.files.roots", "GET", "/server/files/roots", executors.Params{},
-		func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerFilesRootsResult, error *Error) {
+		func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerFilesRootsResult, error *Error) {
 
 			if error != nil {
 				t.Fatal(error)
@@ -489,7 +491,7 @@ func TestApi(t *testing.T) {
 
 	testAll(t, "server.files.get_directory", "GET", "/server/files/directory", executors.Params{
 		"path": "config",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerFilesGetDirectoryResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerFilesGetDirectoryResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -514,7 +516,7 @@ func TestApi(t *testing.T) {
 
 	testAll(t, "server.files.post_directory", "POST", "/server/files/directory", executors.Params{
 		"path": "config/bar",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerFilesPostDirectoryResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerFilesPostDirectoryResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -532,15 +534,15 @@ func TestApi(t *testing.T) {
 
 	testAll(t, "server.files.delete_directory", "DELETE", "/server/files/directory", executors.Params{
 		"path": "config/foo",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerFilesPostDirectoryResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, _ *executors.ServerFilesPostDirectoryResult, error *Error) {
 
-		assert.Equal(t, error.Message, "directory is not empty")
+		require.Error(t, error, "failed to delete directory: directory is not empty")
 	})
 
 	testAll(t, "server.files.delete_directory", "DELETE", "/server/files/directory", executors.Params{
 		"path":  "config/foo",
 		"force": "true",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerFilesPostDirectoryResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerFilesPostDirectoryResult, error *Error) {
 
 		if error != nil {
 			t.Fatal(error)
@@ -566,7 +568,7 @@ func TestApi(t *testing.T) {
 	testAll(t, "server.files.move", "POST", "/server/files/move", executors.Params{
 		"source": "config/foo/test.txt",
 		"dest":   "config/test.txt",
-	}, func(t *testing.T, response *httptest.ResponseRecorder, result *executors.ServerFilesMoveResult, error *Error) {
+	}, func(t *testing.T, _ *httptest.ResponseRecorder, result *executors.ServerFilesMoveResult, error *Error) {
 
 		// re-create file
 		_, err = files.Fs.Create(moveSourcePath)

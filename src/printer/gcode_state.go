@@ -2,12 +2,13 @@ package printer
 
 import (
 	"fmt"
-	"marlinraker/src/printer/parser"
-	"marlinraker/src/printer_objects"
-	"marlinraker/src/shared"
 	"math"
 	"strconv"
 	"strings"
+
+	"marlinraker/src/printer/parser"
+	"marlinraker/src/printer_objects"
+	"marlinraker/src/shared"
 )
 
 type GcodeState struct {
@@ -47,55 +48,55 @@ func (state *GcodeState) update(line string) error {
 			}
 		}
 		if err := printer_objects.EmitObject("toolhead"); err != nil {
-			return err
+			return fmt.Errorf("failed to emit toolhead: %w", err)
 		}
 
-	case parser.M18_M84_M410.MatchString(line):
+	case parser.M18M84M410.MatchString(line):
 		for i := 0; i < 3; i++ {
 			state.HomedAxes[i] = false
 		}
 		if err := printer_objects.EmitObject("toolhead"); err != nil {
-			return err
+			return fmt.Errorf("failed to emit toolhead: %w", err)
 		}
 
 	case parser.G90.MatchString(line):
 		state.IsAbsoluteCoordinate = true
 		state.IsAbsoluteExtrude = true
 		if err := printer_objects.EmitObject("gcode_move"); err != nil {
-			return err
+			return fmt.Errorf("failed to emit gcode_move: %w", err)
 		}
 
 	case parser.G91.MatchString(line):
 		state.IsAbsoluteCoordinate = false
 		state.IsAbsoluteExtrude = false
 		if err := printer_objects.EmitObject("gcode_move"); err != nil {
-			return err
+			return fmt.Errorf("failed to emit gcode_move: %w", err)
 		}
 
 	case parser.M82.MatchString(line):
 		state.IsAbsoluteExtrude = true
 		if err := printer_objects.EmitObject("gcode_move"); err != nil {
-			return err
+			return fmt.Errorf("failed to emit gcode_move: %w", err)
 		}
 
 	case parser.M83.MatchString(line):
 		state.IsAbsoluteExtrude = false
 		if err := printer_objects.EmitObject("gcode_move"); err != nil {
-			return err
+			return fmt.Errorf("failed to emit gcode_move: %w", err)
 		}
 
-	case parser.M220_M221.MatchString(line):
+	case parser.M220M221.MatchString(line):
 		factor, err := parser.ParseM220M221(line)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse speed/extrude factor: %w", err)
 		}
 		if parser.M220.MatchString(line) {
 			state.SpeedFactor = factor
 		} else {
 			state.ExtrudeFactor = factor
 		}
-		if err := printer_objects.EmitObject("gcode_move"); err != nil {
-			return err
+		if err = printer_objects.EmitObject("gcode_move"); err != nil {
+			return fmt.Errorf("failed to emit gcode_move: %w", err)
 		}
 	}
 

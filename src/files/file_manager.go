@@ -5,17 +5,19 @@ import (
 	"compress/flate"
 	"errors"
 	"fmt"
-	"github.com/samber/lo"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"io"
 	"io/fs"
-	"marlinraker/src/api/notification"
-	"marlinraker/src/util"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/samber/lo"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
+
+	"marlinraker/src/api/notification"
+	"marlinraker/src/util"
 )
 
 type File struct {
@@ -79,7 +81,7 @@ func Init() error {
 	for _, fileRoot := range FileRoots {
 		err := Fs.MkdirAll(fileRoot.Path, 0755)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to create directory %q: %w", fileRoot.Path, err)
 		}
 	}
 
@@ -101,12 +103,13 @@ func ListFiles(rootName string) ([]File, error) {
 
 	err = afero.Walk(Fs, root.Path, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
+			//nolint:wrapcheck
 			return err
 		}
 		if !info.IsDir() {
 			relPath, err := filepath.Rel(root.Path, path)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get relative path: %w", err)
 			}
 
 			files = append(files, File{
@@ -120,7 +123,7 @@ func ListFiles(rootName string) ([]File, error) {
 	})
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to walk through directory %q: %w", root.Path, err)
 	}
 	return files, nil
 }
@@ -146,7 +149,7 @@ func Move(source string, dest string) (MoveAction, error) {
 	sourceDiskPath, destDiskPath := filepath.Join(DataDir, source), filepath.Join(DataDir, dest)
 	err = Fs.Rename(sourceDiskPath, destDiskPath)
 	if err != nil {
-		return action, err
+		return action, fmt.Errorf("failed to move %q to %q: %w", sourceDiskPath, destDiskPath, err)
 	}
 
 	if !strings.Contains(sourceRoot.Permissions, "w") || !strings.Contains(destRoot.Permissions, "w") {
@@ -155,7 +158,7 @@ func Move(source string, dest string) (MoveAction, error) {
 
 	stat, err := Fs.Stat(destDiskPath)
 	if err != nil {
-		return action, err
+		return action, fmt.Errorf("failed to stat %q: %w", destDiskPath, err)
 	}
 
 	if sourceRoot.Name == "gcodes" && destRoot.Name == "gcodes" {
@@ -190,7 +193,10 @@ func Move(source string, dest string) (MoveAction, error) {
 	}
 
 	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
-	return action, err
+	if err != nil {
+		return action, fmt.Errorf("failed to publish notification: %w", err)
+	}
+	return action, nil
 }
 
 func CreateArchive(dest string, items []string, compress bool) (ZipAction, error) {
@@ -221,7 +227,7 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 	destDisk := filepath.Join(DataDir, rootName, path)
 	archive, err := Fs.OpenFile(destDisk, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
 	if err != nil {
-		return ZipAction{}, err
+		return ZipAction{}, fmt.Errorf("failed to create archive %q: %w", destDisk, err)
 	}
 	defer func() {
 		if err := archive.Close(); err != nil {
@@ -246,7 +252,7 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 		diskPath := filepath.Join(DataDir, item)
 		stat, err := Fs.Stat(diskPath)
 		if err != nil {
-			return ZipAction{}, err
+			return ZipAction{}, fmt.Errorf("failed to stat %q: %w", diskPath, err)
 		}
 
 		if !stat.IsDir() {
@@ -256,7 +262,7 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 		} else {
 			files, err := afero.ReadDir(Fs, diskPath)
 			if err != nil {
-				return ZipAction{}, err
+				return ZipAction{}, fmt.Errorf("failed to read directory %q: %w", diskPath, err)
 			}
 			for _, file := range files {
 				item := filepath.Join(item, file.Name())
@@ -269,12 +275,12 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 	}
 
 	if err := zipWriter.Close(); err != nil {
-		return ZipAction{}, err
+		return ZipAction{}, fmt.Errorf("failed to close archive %q: %w", destDisk, err)
 	}
 
 	stat, err := Fs.Stat(destDisk)
 	if err != nil {
-		return ZipAction{}, err
+		return ZipAction{}, fmt.Errorf("failed to stat archive %q: %w", destDisk, err)
 	}
 
 	item := ActionItem{
@@ -291,7 +297,7 @@ func CreateArchive(dest string, items []string, compress bool) (ZipAction, error
 			Action: "create_file",
 		},
 	})); err != nil {
-		return ZipAction{}, err
+		return ZipAction{}, fmt.Errorf("failed to publish notification: %w", err)
 	}
 
 	return ZipAction{
@@ -304,12 +310,12 @@ func writeFileToArchive(zipWriter *zip.Writer, fileName string, diskPath string)
 
 	writer, err := zipWriter.Create(fileName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create file %q in archive: %w", fileName, err)
 	}
 
 	reader, err := Fs.Open(diskPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open file %q: %w", diskPath, err)
 	}
 	defer func() {
 		if err := reader.Close(); err != nil {
@@ -318,7 +324,7 @@ func writeFileToArchive(zipWriter *zip.Writer, fileName string, diskPath string)
 	}()
 
 	if _, err := io.Copy(writer, reader); err != nil {
-		return err
+		return fmt.Errorf("failed to write file %q to archive: %w", diskPath, err)
 	}
 	return nil
 }

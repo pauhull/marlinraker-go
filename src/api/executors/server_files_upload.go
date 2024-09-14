@@ -1,13 +1,15 @@
 package executors
 
 import (
+	"fmt"
+	"net/http"
+	"path/filepath"
+	"strconv"
+
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/util"
-	"net/http"
-	"path/filepath"
-	"strconv"
 )
 
 type ServerFilesUploadResult files.FileUploadAction
@@ -16,12 +18,12 @@ func ServerFilesUpload(_ *connections.Connection, request *http.Request, _ Param
 
 	reader, err := request.MultipartReader()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create multipart reader: %w", err)
 	}
 
 	form, err := reader.ReadForm(8 << 20) // 8 mb
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read form: %w", err)
 	}
 
 	root := "gcodes"
@@ -58,7 +60,7 @@ func ServerFilesUpload(_ *connections.Connection, request *http.Request, _ Param
 
 	action, err := files.Upload(root, path, checksum, headers[0])
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to upload file: %w", err)
 	}
 
 	if startPrint {

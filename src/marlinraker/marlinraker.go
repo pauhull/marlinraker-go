@@ -2,6 +2,7 @@ package marlinraker
 
 import (
 	log "github.com/sirupsen/logrus"
+
 	"marlinraker/src/api/notification"
 	"marlinraker/src/config"
 	"marlinraker/src/constants"

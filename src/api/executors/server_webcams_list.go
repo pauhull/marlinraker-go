@@ -1,8 +1,9 @@
 package executors
 
 import (
-	"marlinraker/src/marlinraker/connections"
 	"net/http"
+
+	"marlinraker/src/marlinraker/connections"
 )
 
 type ServerWebcamsListResult struct {

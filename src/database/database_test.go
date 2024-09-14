@@ -1,11 +1,13 @@
 package database
 
 import (
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/spf13/afero"
-	"gotest.tools/assert"
-	"marlinraker/src/files"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"marlinraker/src/files"
 )
 
 func TestInit(t *testing.T) {
@@ -13,17 +15,17 @@ func TestInit(t *testing.T) {
 	files.Fs = afero.NewMemMapFs()
 
 	err := Init()
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	content, err := afero.ReadFile(files.Fs, "db.json")
-	assert.NilError(t, err)
-	assert.Equal(t, string(content), "{}")
+	require.NoError(t, err)
+	assert.Equal(t, "{}", string(content))
 
 	err = afero.WriteFile(files.Fs, "db.json", []byte("{invalid:json}"), 0755)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	err = Init()
-	assert.Error(t, err, "malformed db.json")
+	require.Error(t, err, "malformed db.json")
 }
 
 func TestPostItem(t *testing.T) {
@@ -31,35 +33,46 @@ func TestPostItem(t *testing.T) {
 	files.Fs = afero.NewMemMapFs()
 
 	err := Init()
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	val, err := PostItem("test", "key", "value", false)
-	assert.NilError(t, err)
-	assert.Equal(t, val, "value")
+	require.NoError(t, err)
+	assert.Equal(t, "value", val)
 
 	val, err = PostItem("test", "number", 123, false)
-	assert.NilError(t, err)
-	assert.Equal(t, val, 123)
+	require.NoError(t, err)
+	assert.Equal(t, 123, val)
 
 	val, err = PostItem("test", "bool", true, false)
-	assert.NilError(t, err)
-	assert.Equal(t, val, true)
+	require.NoError(t, err)
+	assert.Equal(t, true, val)
 
 	val, err = PostItem("test", "slice", []string{"a", "b", "c"}, false)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, val, []string{"a", "b", "c"})
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b", "c"}, val)
 
 	val, err = PostItem("marlinraker", "foo", "bar", true)
-	assert.NilError(t, err)
-	assert.Equal(t, val, "bar")
+	require.NoError(t, err)
+	assert.Equal(t, "bar", val)
 
-	_, err = PostItem("marlinraker", "boo", "far", false)
-	assert.Error(t, err, "reserved namespace access not allowed")
+	val, err = PostItem("marlinraker", "boo", "far", false)
+	require.Error(t, err, "reserved namespace access not allowed")
+	assert.Nil(t, val)
 
 	content, err := afero.ReadFile(files.Fs, "db.json")
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
-	assert.Equal(t, string(content), `{"test":{"key":"value","number":123,"bool":true,"slice":["a","b","c"]},"marlinraker":{"foo":"bar"}}`)
+	assert.JSONEq(t, `{
+		"test": {
+			"key": "value",
+			"number": 123,
+			"bool": true,
+			"slice": ["a", "b", "c"]
+		},
+		"marlinraker": {
+			"foo": "bar"
+		}
+	}`, string(content))
 }
 
 func TestGetItem(t *testing.T) {
@@ -68,48 +81,51 @@ func TestGetItem(t *testing.T) {
 
 	content := `{"test":{"key":"value","number":123,"bool":true,"slice":["a","b","c"]},"marlinraker":{"foo":"bar"}}`
 	err := afero.WriteFile(files.Fs, "db.json", []byte(content), 0755)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	err = Init()
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	val, err := GetItem("test", "key", false)
-	assert.NilError(t, err)
-	assert.Equal(t, val, "value")
+	require.NoError(t, err)
+	assert.Equal(t, "value", val)
 
 	val, err = GetItem("test", "number", false)
-	assert.NilError(t, err)
-	assert.Equal(t, val, 123.)
+	require.NoError(t, err)
+	assert.InDelta(t, 123., val, 1e-5)
 
 	val, err = GetItem("test", "bool", false)
-	assert.NilError(t, err)
-	assert.Equal(t, val, true)
+	require.NoError(t, err)
+	assert.Equal(t, true, val)
 
 	val, err = GetItem("test", "slice", false)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, val, []any{"a", "b", "c"})
+	require.NoError(t, err)
+	assert.Equal(t, []any{"a", "b", "c"}, val)
 
 	val, err = GetItem("test", "", false)
-	assert.NilError(t, err)
-	assert.DeepEqual(t, val, map[string]any{
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{
 		"bool":   true,
 		"key":    "value",
 		"number": 123.,
 		"slice":  []any{"a", "b", "c"},
-	})
+	}, val)
 
-	_, err = GetItem("test", "foo", false)
-	assert.Error(t, err, `failed to get item: key "foo" in namespace "test" not found`)
+	val, err = GetItem("test", "foo", false)
+	require.Error(t, err, `failed to get item: key "foo" in namespace "test" not found`)
+	assert.Nil(t, val)
 
-	_, err = GetItem("foo", "", false)
-	assert.Error(t, err, `failed to get item: namespace "foo" not found`)
+	val, err = GetItem("foo", "", false)
+	require.Error(t, err, `failed to get item: namespace "foo" not found`)
+	assert.Nil(t, val)
 
-	_, err = GetItem("marlinraker", "foo", false)
-	assert.Error(t, err, "failed to get item: reserved namespace access not allowed")
+	val, err = GetItem("marlinraker", "foo", false)
+	require.Error(t, err, "failed to get item: reserved namespace access not allowed")
+	assert.Nil(t, val)
 
 	val, err = GetItem("marlinraker", "foo", true)
-	assert.NilError(t, err)
-	assert.Equal(t, val, "bar")
+	require.NoError(t, err)
+	assert.Equal(t, "bar", val)
 }
 
 func TestDeleteItem(t *testing.T) {
@@ -119,34 +135,36 @@ func TestDeleteItem(t *testing.T) {
 	{
 		content := `{"test":{"key":"value","number":123,"bool":true,"slice":["a","b","c"]},"foo":{"bar":0}}`
 		err := afero.WriteFile(files.Fs, "db.json", []byte(content), 0755)
-		assert.NilError(t, err)
+		require.NoError(t, err)
 	}
 
 	err := Init()
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	val, err := DeleteItem("test", "key", false)
-	assert.NilError(t, err)
-	assert.Equal(t, val, "value")
+	require.NoError(t, err)
+	assert.Equal(t, "value", val)
 
 	val, err = DeleteItem("test", "number", false)
-	assert.NilError(t, err)
-	assert.Equal(t, val, 123.)
+	require.NoError(t, err)
+	assert.InDelta(t, 123., val, 1e-5)
 
 	val, err = DeleteItem("test", "foo", false)
-	assert.Error(t, err, `key "foo" in namespace "test" not found`)
+	require.Error(t, err, `key "foo" in namespace "test" not found`)
+	assert.Nil(t, val)
 
 	val, err = DeleteItem("foo", "bar", false)
-	assert.NilError(t, err)
-	assert.Equal(t, val, 0.)
+	require.NoError(t, err)
+	assert.InDelta(t, 0., val, 1e-5)
 
 	val, err = DeleteItem("marlinraker", "foo", false)
-	assert.Error(t, err, "reserved namespace access not allowed")
+	require.Error(t, err, "reserved namespace access not allowed")
+	assert.Nil(t, val)
 
 	{
 		content, err := afero.ReadFile(files.Fs, "db.json")
-		assert.NilError(t, err)
-		assert.Equal(t, string(content), `{"test":{"bool":true,"slice":["a","b","c"]}}`)
+		require.NoError(t, err)
+		assert.JSONEq(t, `{"test":{"bool":true,"slice":["a","b","c"]}}`, string(content))
 	}
 }
 
@@ -156,12 +174,11 @@ func TestListNamespaces(t *testing.T) {
 
 	content := `{"test":{"key":"value","number":123,"bool":true,"slice":["a","b","c"]},"foo":{"bar":0}}`
 	err := afero.WriteFile(files.Fs, "db.json", []byte(content), 0755)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	err = Init()
-	assert.NilError(t, err)
+	require.NoError(t, err)
 
 	namespaces := ListNamespaces()
-	assert.DeepEqual(t, namespaces, append(ReservedNamespaces, "test", "foo"),
-		cmpopts.SortSlices(func(a string, b string) bool { return a < b }))
+	assert.ElementsMatch(t, append(ReservedNamespaces, "test", "foo"), namespaces)
 }

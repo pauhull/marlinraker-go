@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 )
@@ -14,7 +15,7 @@ func ParseG0G1G92(request string) (map[string]float64, error) {
 	for _, match := range coordRegex.FindAllStringSubmatch(request, -1) {
 		value, err := strconv.ParseFloat(match[2], 64)
 		if err != nil {
-			return coords, err
+			return coords, fmt.Errorf("failed to parse %s coordinate: %w", match[1], err)
 		}
 		coords[match[1]] = value
 	}
