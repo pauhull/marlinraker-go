@@ -56,9 +56,8 @@ func getMemory(memInfo string, regex *regexp.Regexp) (int64, string, error) {
 		}
 		units := match[2]
 		return totalMemory, units, nil
-	} else {
-		return 0, "B", nil
 	}
+	return 0, "B", nil
 }
 
 func getMemAvailImpl(memInfoPath string) (int64, error) {

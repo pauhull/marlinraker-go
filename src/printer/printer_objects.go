@@ -1,8 +1,9 @@
 package printer
 
 import (
-	"marlinraker/src/printer_objects"
 	"strings"
+
+	"marlinraker/src/printer_objects"
 )
 
 type toolheadObject struct {

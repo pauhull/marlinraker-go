@@ -2,13 +2,15 @@ package macros
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"marlinraker/src/config"
-	"marlinraker/src/printer_objects"
-	"marlinraker/src/shared"
 	"regexp"
 	"strconv"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/config"
+	"marlinraker/src/printer_objects"
+	"marlinraker/src/shared"
 )
 
 type MacroManager struct {
@@ -37,7 +39,11 @@ func (params Params) RequireFloat64(name string) (float64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return strconv.ParseFloat(value, 64)
+	f, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return 0, fmt.Errorf("%s is not a valid number", value)
+	}
+	return f, nil
 }
 
 type Objects map[string]printer_objects.QueryResult
@@ -124,7 +130,7 @@ func (manager *MacroManager) ExecuteMacro(macro Macro, context shared.ExecutorCo
 	for name, object := range printer_objects.GetObjects() {
 		objects[name], err = object.Query()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to query object %q: %w", name, err)
 		}
 	}
 
@@ -135,7 +141,7 @@ func (manager *MacroManager) ExecuteMacro(macro Macro, context shared.ExecutorCo
 		name, valueQuoted := strings.ToLower(match[1]), match[2]
 		value, err := strconv.Unquote(valueQuoted)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to unquote value %q: %w", valueQuoted, err)
 		}
 		params[name] = value
 	}

@@ -2,9 +2,11 @@ package executors
 
 import (
 	"fmt"
-	"github.com/samber/lo"
-	"marlinraker/src/util"
 	"strconv"
+
+	"github.com/samber/lo"
+
+	"marlinraker/src/util"
 )
 
 type Params map[string]any
@@ -14,11 +16,7 @@ func (params Params) GetString(name string) (string, bool) {
 	if !exists {
 		return "", false
 	}
-	switch value := value.(type) {
-	case string:
-		return value, true
-	}
-	return fmt.Sprintf("%v", value), true
+	return fmt.Sprint(value), true
 }
 
 func (params Params) RequireString(name string) (string, error) {

@@ -1,10 +1,11 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/config"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
 )
 
 type ConfigFile struct {

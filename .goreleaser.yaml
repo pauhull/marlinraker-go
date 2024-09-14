@@ -11,7 +11,7 @@ builds:
     ldflags:
       - -s
       - -w
-      - -X {{ .ModulePath }}/src/constants.Version={{ .Version }}
+      - -X {{ .ModulePath }}/src/constants.APIVersionString={{ .Version }}
       - -X {{ .ModulePath }}/src/constants.suffix={{- if .IsSnapshot -}}dev+{{ .ShortCommit }}{{- end -}}
     env:
       - CGO_ENABLED=0

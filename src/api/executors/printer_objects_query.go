@@ -2,13 +2,15 @@ package executors
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/samber/lo"
+
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/system_info/procfs"
 	"marlinraker/src/util"
-	"net/http"
-	"strings"
 )
 
 type PrinterObjectsQueryResult struct {
@@ -16,11 +18,11 @@ type PrinterObjectsQueryResult struct {
 	Status    map[string]printer_objects.QueryResult `json:"status"`
 }
 
-func PrinterObjectsQueryHttp(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
+func PrinterObjectsQueryHTTP(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 
 	eventTime, err := procfs.GetUptime()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get uptime: %w", err)
 	}
 
 	results := PrinterObjectsQueryResult{
@@ -30,14 +32,14 @@ func PrinterObjectsQueryHttp(_ *connections.Connection, _ *http.Request, params 
 
 	for name, attributes := range params {
 		attributesStr := fmt.Sprintf("%v", attributes)
-		var attributes []string = nil
+		var attributes []string
 		if attributesStr != "" {
 			attributes = strings.Split(attributesStr, ",")
 		}
 		if result, err := query(name, attributes); err == nil {
 			results.Status[name] = result
 		} else {
-			return nil, err
+			return nil, fmt.Errorf("failed to query %q: %w", name, err)
 		}
 	}
 
@@ -53,7 +55,7 @@ func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, param
 
 	eventTime, err := procfs.GetUptime()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get uptime: %w", err)
 	}
 
 	results := PrinterObjectsQueryResult{
@@ -62,7 +64,7 @@ func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, param
 	}
 
 	for name, attributes := range objects {
-		var attributesStr []string = nil
+		var attributesStr []string
 		if attributes != nil {
 			if attributes, isArray := attributes.([]any); isArray {
 				attributesStr = lo.Map(attributes, func(attr any, _ int) string {
@@ -85,7 +87,7 @@ func PrinterObjectsQuerySocket(_ *connections.Connection, _ *http.Request, param
 func query(name string, attributes []string) (printer_objects.QueryResult, error) {
 	result, err := printer_objects.Query(name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query %s: %v", name, err)
+		return nil, fmt.Errorf("failed to query %s: %w", name, err)
 	}
 
 	if len(attributes) > 0 {

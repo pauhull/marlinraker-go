@@ -1,9 +1,11 @@
 package executors
 
 import (
+	"fmt"
+	"net/http"
+
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/service"
-	"net/http"
 )
 
 func MachineServicesStart(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
@@ -14,7 +16,7 @@ func MachineServicesStart(_ *connections.Connection, _ *http.Request, params Par
 	}
 
 	if err := service.PerformAction(svc, service.Start); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not start service %q: %w", svc, err)
 	}
 	return "ok", nil
 }

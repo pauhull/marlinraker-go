@@ -2,9 +2,11 @@ package macros
 
 import (
 	"fmt"
-	"github.com/samber/lo"
-	"marlinraker/src/shared"
 	"strings"
+
+	"github.com/samber/lo"
+
+	"marlinraker/src/shared"
 )
 
 type setHeaterTemperatureMacro struct{}

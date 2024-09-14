@@ -3,13 +3,15 @@ package executors
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/samber/lo"
+
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/system_info/procfs"
 	"marlinraker/src/util"
-	"net/http"
-	"strings"
 )
 
 type PrinterObjectsSubscribeResult struct {
@@ -17,19 +19,19 @@ type PrinterObjectsSubscribeResult struct {
 	Status    map[string]printer_objects.QueryResult `json:"status"`
 }
 
-func PrinterObjectsSubscribeHttp(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
+func PrinterObjectsSubscribeHTTP(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 
-	connectionId, err := params.RequireInt64("connection_id")
+	connectionID, err := params.RequireInt64("connection_id")
 	if err != nil {
 		return nil, err
 	}
 
 	connection, found := lo.Find(connections.GetConnections(), func(connection connections.Connection) bool {
-		return connection.Id == int(connectionId)
+		return connection.ID == int(connectionID)
 	})
 
 	if !found {
-		return nil, util.NewErrorf(400, "connection with id %d does not exist", connectionId)
+		return nil, util.NewErrorf(400, "connection with id %d does not exist", connectionID)
 	}
 
 	subscriptions := make(map[string][]string)
@@ -71,7 +73,7 @@ func subscribe(connection *connections.Connection, subscriptions map[string][]st
 
 	eventTime, err := procfs.GetUptime()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get uptime: %w", err)
 	}
 
 	results := PrinterObjectsSubscribeResult{
@@ -89,7 +91,7 @@ func subscribe(connection *connections.Connection, subscriptions map[string][]st
 		printer_objects.Subscribe(connection, name, attributes)
 		result, err := printer_objects.Query(name)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("failed to query %s: %v", name, err))
+			errs = append(errs, fmt.Errorf("failed to query %s: %w", name, err))
 			continue
 		}
 
@@ -106,7 +108,7 @@ func subscribe(connection *connections.Connection, subscriptions map[string][]st
 	}
 
 	if err = errors.Join(errs...); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
 	return results, nil
 }

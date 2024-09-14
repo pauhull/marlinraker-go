@@ -1,11 +1,14 @@
 package macros
 
 import (
-	"github.com/Masterminds/sprig/v3"
-	log "github.com/sirupsen/logrus"
-	"marlinraker/src/shared"
+	"fmt"
 	"strings"
 	"text/template"
+
+	"github.com/Masterminds/sprig/v3"
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/shared"
 )
 
 type customMacro struct {
@@ -16,7 +19,7 @@ type customMacro struct {
 func newCustomMacro(name string, description string, content string) (*customMacro, error) {
 	tmpl, err := template.New(name).Funcs(sprig.FuncMap()).Parse(content)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
 	return &customMacro{description: description, tmpl: tmpl}, nil
 }
@@ -57,7 +60,7 @@ func (macro *customMacro) Execute(manager *MacroManager, context shared.Executor
 
 	builder := strings.Builder{}
 	if err := macro.tmpl.Execute(&builder, ctx); err != nil {
-		return err
+		return fmt.Errorf("failed to execute macro: %w", err)
 	}
 	gcode := builder.String()
 	<-context.QueueGcode(gcode, true)

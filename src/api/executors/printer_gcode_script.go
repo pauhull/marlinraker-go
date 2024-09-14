@@ -1,10 +1,11 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/util"
-	"net/http"
 )
 
 func PrinterGcodeScript(_ *connections.Connection, _ *http.Request, params Params) (any, error) {

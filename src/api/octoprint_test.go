@@ -1,33 +1,37 @@
 package api
 
 import (
-	"bytes"
-	"github.com/spf13/afero"
-	"github.com/stretchr/testify/assert"
-	"marlinraker/src/api/notification"
-	"marlinraker/src/config"
-	"marlinraker/src/files"
-	"marlinraker/src/marlinraker"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"path/filepath"
 	"testing"
+
+	"github.com/spf13/afero"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"marlinraker/src/api/notification"
+	"marlinraker/src/config"
+	"marlinraker/src/files"
+	"marlinraker/src/marlinraker"
 )
 
-func testOctoPrintEndpoint(t *testing.T, method string, endpoint string, body []byte,
+func testOctoPrintEndpoint(t *testing.T, endpoint string,
 	f func(*testing.T, string)) {
-	t.Run(method+endpoint, func(t *testing.T) {
+	t.Run("GET"+endpoint, func(t *testing.T) {
 
 		urlQuery, err := url.Parse(endpoint)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		request, _ := http.NewRequest(method, urlQuery.String(), bytes.NewReader(body))
+		request, err := http.NewRequestWithContext(context.Background(), "GET", urlQuery.String(), nil)
+		require.NoError(t, err)
 
 		recorder := httptest.NewRecorder()
-		HttpHandler{}.ServeHTTP(recorder, request)
+		HTTPHandler{}.ServeHTTP(recorder, request)
 
 		f(t, recorder.Body.String())
 	})
@@ -38,7 +42,7 @@ func TestOctoPrint(t *testing.T) {
 	marlinraker.Config = config.DefaultConfig()
 	marlinraker.Config.Misc.OctoprintCompat = true
 
-	testOctoPrintEndpoint(t, "GET", "/api/version", nil, func(t *testing.T, result string) {
+	testOctoPrintEndpoint(t, "/api/version", func(t *testing.T, result string) {
 		assert.JSONEq(t, `
 		{
             "server": "1.5.0",
@@ -48,7 +52,7 @@ func TestOctoPrint(t *testing.T) {
 		`, result)
 	})
 
-	testOctoPrintEndpoint(t, "GET", "/api/server", nil, func(t *testing.T, result string) {
+	testOctoPrintEndpoint(t, "/api/server", func(t *testing.T, result string) {
 		assert.JSONEq(t, `
 		{
             "server": "1.5.0",
@@ -57,7 +61,7 @@ func TestOctoPrint(t *testing.T) {
 		`, result)
 	})
 
-	testOctoPrintEndpoint(t, "GET", "/api/login", nil, func(t *testing.T, result string) {
+	testOctoPrintEndpoint(t, "/api/login", func(t *testing.T, result string) {
 		assert.JSONEq(t, `
 		{
             "_is_external_client": false,
@@ -73,7 +77,7 @@ func TestOctoPrint(t *testing.T) {
 		`, result)
 	})
 
-	testOctoPrintEndpoint(t, "GET", "/api/settings", nil, func(t *testing.T, result string) {
+	testOctoPrintEndpoint(t, "/api/settings", func(t *testing.T, result string) {
 		assert.JSONEq(t, `
 		{
             "plugins": {
@@ -103,7 +107,7 @@ func TestOctoPrint(t *testing.T) {
 		`, result)
 	})
 
-	testOctoPrintEndpoint(t, "GET", "/api/job", nil, func(t *testing.T, result string) {
+	testOctoPrintEndpoint(t, "/api/job", func(t *testing.T, result string) {
 		assert.JSONEq(t, `
 		{
             "job": {
@@ -128,7 +132,7 @@ func TestOctoPrint(t *testing.T) {
 		`, result)
 	})
 
-	testOctoPrintEndpoint(t, "GET", "/api/printer", nil, func(t *testing.T, result string) {
+	testOctoPrintEndpoint(t, "/api/printer", func(t *testing.T, result string) {
 		assert.JSONEq(t, `
 		{
             "temperature": {
@@ -160,7 +164,7 @@ func TestOctoPrint(t *testing.T) {
 		`, result)
 	})
 
-	testOctoPrintEndpoint(t, "GET", "/api/printerprofiles", nil, func(t *testing.T, result string) {
+	testOctoPrintEndpoint(t, "/api/printerprofiles", func(t *testing.T, result string) {
 		assert.JSONEq(t, `
 		{
             "profiles": {
@@ -222,6 +226,6 @@ func TestOctoPrintFileUpload(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, string(contents), "this is a test\n")
+			assert.Equal(t, "this is a test\n", string(contents))
 		})
 }

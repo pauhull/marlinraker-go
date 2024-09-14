@@ -1,13 +1,14 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/util"
-	"net/http"
 )
 
 type ServerConnectionIdentifyResult struct {
-	ConnectionId int `json:"connection_id"`
+	ConnectionID int `json:"connection_id"`
 }
 
 func ServerConnectionIdentify(connection *connections.Connection, _ *http.Request, params Params) (any, error) {
@@ -36,8 +37,8 @@ func ServerConnectionIdentify(connection *connections.Connection, _ *http.Reques
 		return nil, err
 	}
 
-	connection.ClientName, connection.Version, connection.ClientType, connection.Url =
+	connection.ClientName, connection.Version, connection.ClientType, connection.URL =
 		clientName, version, clientType, url
 
-	return ServerConnectionIdentifyResult{connection.Id}, nil
+	return ServerConnectionIdentifyResult{connection.ID}, nil
 }

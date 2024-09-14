@@ -1,9 +1,11 @@
 package executors
 
 import (
+	"fmt"
+	"net/http"
+
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
 )
 
 type ServerFilesDeleteFileResult files.FileDeleteAction
@@ -11,7 +13,12 @@ type ServerFilesDeleteFileResult files.FileDeleteAction
 func ServerFilesDeleteFile(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
 	path, err := params.RequirePath("path")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("path: %w", err)
 	}
-	return files.DeleteFile(path)
+
+	action, err := files.DeleteFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("could not delete file %q: %w", path, err)
+	}
+	return action, nil
 }

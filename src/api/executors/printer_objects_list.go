@@ -1,10 +1,12 @@
 package executors
 
 import (
+	"net/http"
+
 	"github.com/samber/lo"
+
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/printer_objects"
-	"net/http"
 )
 
 type PrinterObjectsListResult struct {

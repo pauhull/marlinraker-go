@@ -1,6 +1,10 @@
 package macros
 
-import "marlinraker/src/shared"
+import (
+	"fmt"
+
+	"marlinraker/src/shared"
+)
 
 type sdcardResetFileMacro struct{}
 
@@ -9,5 +13,9 @@ func (sdcardResetFileMacro) Description() string {
 }
 
 func (sdcardResetFileMacro) Execute(manager *MacroManager, context shared.ExecutorContext, _ []string, _ Objects, _ Params) error {
-	return manager.printer.GetPrintManager().Reset(context)
+	err := manager.printer.GetPrintManager().Reset(context)
+	if err != nil {
+		return fmt.Errorf("failed to reset SD print: %w", err)
+	}
+	return nil
 }

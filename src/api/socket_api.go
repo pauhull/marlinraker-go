@@ -2,38 +2,42 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
+
 	"marlinraker/src/api/executors"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/util"
-	"net/http"
 )
 
-type Rpc struct {
-	JsonRpc string `json:"jsonrpc"`
-	Id      int    `json:"id"`
+type RPC struct {
+	JSONRPC string `json:"jsonrpc"`
+	ID      int    `json:"id"`
 }
 
-type RpcRequest struct {
-	Rpc
+type RPCRequest struct {
+	RPC
 	Method string           `json:"method"`
 	Params executors.Params `json:"params"`
 }
 
-type RpcResultResponse struct {
-	Rpc
+type RPCResultResponse struct {
+	RPC
 	Result any `json:"result"`
 }
 
-type RpcErrorResponse struct {
-	Rpc
+type RPCErrorResponse struct {
+	RPC
 	Error Error `json:"error"`
 }
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
+	CheckOrigin: func(*http.Request) bool {
 		return true
 	},
 }
@@ -41,7 +45,7 @@ var upgrader = websocket.Upgrader{
 func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 	socket, err := upgrader.Upgrade(writer, request, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to upgrade connection: %w", err)
 	}
 
 	connection := connections.RegisterConnection(socket)
@@ -53,7 +57,7 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 		}
 		log.Debugf("recv: %s", string(message))
 
-		var request RpcRequest
+		var request RPCRequest
 		err = json.Unmarshal(message, &request)
 		if err != nil {
 			log.Errorf("Failed to unmarshal request: %v", err)
@@ -63,9 +67,9 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 		executor := socketExecutors[request.Method]
 		if executor == nil {
 			log.Errorf("No executor found for %s", request.Method)
-			err = connection.WriteJson(&RpcErrorResponse{
+			err = connection.WriteJSON(&RPCErrorResponse{
 				Error: Error{404, "Not Found"},
-				Rpc:   request.Rpc,
+				RPC:   request.RPC,
 			})
 			if err != nil {
 				log.Errorf("Failed to send response: %v", err)
@@ -77,12 +81,13 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 		if err != nil {
 			log.Errorf("Error while executing %s: %v", request.Method, err)
 			code := 500
-			if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
+			var executorError *util.ExecutorError
+			if errors.As(err, &executorError) {
 				code = executorError.Code
 			}
-			err = connection.WriteJson(&RpcErrorResponse{
+			err = connection.WriteJSON(&RPCErrorResponse{
 				Error: Error{code, err.Error()},
-				Rpc:   request.Rpc,
+				RPC:   request.RPC,
 			})
 			if err != nil {
 				log.Errorf("Failed to send response: %v", err)
@@ -90,7 +95,7 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 			continue
 		}
 
-		err = connection.WriteJson(&RpcResultResponse{request.Rpc, result})
+		err = connection.WriteJSON(&RPCResultResponse{request.RPC, result})
 		if err != nil {
 			log.Errorf("Failed to send response: %v", err)
 		}
@@ -98,5 +103,6 @@ func handleSocket(writer http.ResponseWriter, request *http.Request) error {
 
 	connections.UnregisterConnection(connection)
 	printer_objects.Unsubscribe(connection)
+	//nolint:nilerr
 	return nil
 }

@@ -1,6 +1,10 @@
 package macros
 
-import "marlinraker/src/shared"
+import (
+	"fmt"
+
+	"marlinraker/src/shared"
+)
 
 type restoreGcodeState struct {
 }
@@ -14,5 +18,9 @@ func (restoreGcodeState) Execute(manager *MacroManager, context shared.ExecutorC
 	if !exists {
 		name = "default"
 	}
-	return manager.printer.RestoreGcodeState(context, name)
+	err := manager.printer.RestoreGcodeState(context, name)
+	if err != nil {
+		return fmt.Errorf("failed to restore G-code state: %w", err)
+	}
+	return nil
 }

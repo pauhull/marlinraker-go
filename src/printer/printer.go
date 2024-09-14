@@ -4,8 +4,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	log "github.com/sirupsen/logrus"
 	"go.bug.st/serial"
+
 	"marlinraker/src/api/notification"
 	"marlinraker/src/config"
 	"marlinraker/src/marlinraker/gcode_store"
@@ -15,8 +19,6 @@ import (
 	"marlinraker/src/printer_objects"
 	"marlinraker/src/shared"
 	"marlinraker/src/util"
-	"strings"
-	"time"
 )
 
 type watcher interface {
@@ -93,7 +95,7 @@ func (printer *Printer) MainExecutorContext() shared.ExecutorContext {
 func (printer *Printer) Disconnect() error {
 	err := printer.port.Close()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to close serial port %q: %w", printer.path, err)
 	}
 	<-printer.CloseCh
 	return nil
@@ -326,7 +328,11 @@ func (printer *Printer) GetPrintManager() shared.PrintManager {
 
 func (printer *Printer) Respond(message string) error {
 	gcode_store.LogNow(message, gcode_store.Response)
-	return notification.Publish(notification.New("notify_gcode_response", []any{message}))
+	err := notification.Publish(notification.New("notify_gcode_response", []any{message}))
+	if err != nil {
+		return fmt.Errorf("error publishing notification: %w", err)
+	}
+	return nil
 }
 
 func (printer *Printer) GetGcodeState() shared.GcodeState {

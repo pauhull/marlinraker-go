@@ -1,10 +1,11 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/util"
-	"net/http"
 )
 
 func PrinterPrintPause(*connections.Connection, *http.Request, Params) (any, error) {

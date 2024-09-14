@@ -3,12 +3,13 @@ package files
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/samber/lo"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/samber/lo"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 )
 
 type Thumbnail struct {
@@ -23,7 +24,7 @@ type Metadata struct {
 	Size                int64       `json:"size"`
 	Modified            float64     `json:"modified"`
 	PrintStartTime      float64     `json:"print_start_time,omitempty"`
-	JobId               string      `json:"job_id,omitempty"`
+	JobID               string      `json:"job_id,omitempty"`
 	Slicer              string      `json:"slicer,omitempty"`
 	SlicerVersion       string      `json:"slicer_version,omitempty"`
 	LayerHeight         float64     `json:"layer_height,omitempty"`
@@ -48,6 +49,7 @@ func RemoveUnusedMetadata() error {
 
 	err := afero.Walk(Fs, gcodeRootPath, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
+			//nolint:wrapcheck
 			return err
 		}
 
@@ -62,7 +64,7 @@ func RemoveUnusedMetadata() error {
 
 		relPath, err := filepath.Rel(gcodeRootPath, path)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get relative path: %w", err)
 		}
 
 		meta, err := LoadMetadata(relPath)
@@ -70,7 +72,7 @@ func RemoveUnusedMetadata() error {
 			metaDiskPath := getMetaDiskPath(relPath)
 			relMetaPath, err := filepath.Rel(gcodeRootPath, metaDiskPath)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to get relative path: %w", err)
 			}
 
 			used = append(used, relMetaPath)
@@ -81,7 +83,7 @@ func RemoveUnusedMetadata() error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to walk through gcodes directory: %w", err)
 	}
 
 	var deleted int
@@ -96,27 +98,27 @@ func RemoveUnusedMetadata() error {
 
 		relPath, err := filepath.Rel(gcodeRootPath, path)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get relative path: %w", err)
 		}
 
 		ext, dir := filepath.Ext(path), filepath.Dir(path)
 		if ext == ".meta" {
 			if !lo.Contains(used, relPath) {
 				if err := Fs.Remove(path); err != nil {
-					return err
+					return fmt.Errorf("failed to remove metadata %q: %w", path, err)
 				}
 				deleted++
 			}
 		} else if ext == ".png" && filepath.Base(dir) == ".thumbs" {
 			if !lo.Contains(used, relPath) {
 				if err := Fs.Remove(path); err != nil {
-					return err
+					return fmt.Errorf("failed to remove thumbnail %q: %w", path, err)
 				}
 				if isEmpty, err := afero.IsEmpty(Fs, dir); err != nil {
-					return err
+					return fmt.Errorf("failed to check if directory is empty %q: %w", dir, err)
 				} else if isEmpty {
 					if err := Fs.Remove(dir); err != nil {
-						return err
+						return fmt.Errorf("failed to remove directory %q: %w", dir, err)
 					}
 				}
 				deleted++
@@ -125,7 +127,7 @@ func RemoveUnusedMetadata() error {
 		return nil
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to remove unused metadata: %w", err)
 	}
 
 	return nil
@@ -162,7 +164,7 @@ func StoreMetadata(metadata *Metadata) error {
 
 	file, err := Fs.OpenFile(diskPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0755)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open file %q: %w", diskPath, err)
 	}
 
 	defer func() {
@@ -173,7 +175,7 @@ func StoreMetadata(metadata *Metadata) error {
 
 	encoder := gob.NewEncoder(file)
 	if err := encoder.Encode(metadata); err != nil {
-		return err
+		return fmt.Errorf("failed to encode metadata: %w", err)
 	}
 	return nil
 }
@@ -184,7 +186,7 @@ func LoadMetadata(fileName string) (*Metadata, error) {
 
 	file, err := Fs.Open(diskPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open file %q: %w", diskPath, err)
 	}
 
 	defer func() {
@@ -196,7 +198,7 @@ func LoadMetadata(fileName string) (*Metadata, error) {
 	metadata := &Metadata{}
 	decoder := gob.NewDecoder(file)
 	if err := decoder.Decode(metadata); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode metadata: %w", err)
 	}
 	return metadata, nil
 }
@@ -212,7 +214,7 @@ func MoveMetadata(src string, dest string) error {
 	srcDir, destDir := filepath.Dir(srcMetaDisk), filepath.Dir(destMetaDisk)
 	thumbDir := filepath.Join(destDir, ".thumbs/")
 	if err := os.MkdirAll(thumbDir, 0755); err != nil {
-		return err
+		return fmt.Errorf("failed to create directory %q: %w", thumbDir, err)
 	}
 
 	destBaseName := filepath.Base(dest)
@@ -220,7 +222,7 @@ func MoveMetadata(src string, dest string) error {
 		destRelPath := fmt.Sprintf(".thumbs/%s-%dx%d.png", destBaseName, thumbnail.Width, thumbnail.Height)
 		srcDiskPath, destDiskPath := filepath.Join(srcDir, thumbnail.RelativePath), filepath.Join(destDir, destRelPath)
 		if err := Fs.Rename(srcDiskPath, destDiskPath); err != nil {
-			return err
+			return fmt.Errorf("failed to move thumbnail %q: %w", srcDiskPath, err)
 		}
 		thumbnail.RelativePath = destRelPath
 		metadata.Thumbnails[i] = thumbnail
@@ -228,28 +230,32 @@ func MoveMetadata(src string, dest string) error {
 
 	srcThumbDir := filepath.Join(srcDir, ".thumbs/")
 	if isEmpty, err := afero.IsEmpty(Fs, srcThumbDir); err != nil {
-		return err
+		return fmt.Errorf("failed to check if directory is empty %q: %w", srcThumbDir, err)
 	} else if isEmpty {
 		if err := Fs.Remove(srcThumbDir); err != nil {
-			return err
+			return fmt.Errorf("failed to remove directory %q: %w", srcThumbDir, err)
 		}
 	}
 
 	metadata.FileName = dest
-	if err := StoreMetadata(metadata); err != nil {
-		return err
+	if err = StoreMetadata(metadata); err != nil {
+		return fmt.Errorf("failed to store metadata: %w", err)
 	}
 
-	return Fs.Remove(srcMetaDisk)
+	if err = Fs.Remove(srcMetaDisk); err != nil {
+		return fmt.Errorf("failed to remove metadata: %w", err)
+	}
+	return nil
 }
 
 func DirectoryRenamed(dir string) error {
 
 	gcodeRootPath := filepath.Join(DataDir, "gcodes")
 	diskPath := filepath.Join(gcodeRootPath, dir)
-	return afero.Walk(Fs, diskPath, func(path string, info fs.FileInfo, err error) error {
+	err := afero.Walk(Fs, diskPath, func(path string, info fs.FileInfo, err error) error {
 
 		if err != nil {
+			//nolint:wrapcheck
 			return err
 		}
 
@@ -259,7 +265,7 @@ func DirectoryRenamed(dir string) error {
 
 		relPath, err := filepath.Rel(gcodeRootPath, path)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get relative path: %w", err)
 		}
 		metadata, err := LoadMetadata(relPath)
 		if err == nil {
@@ -268,6 +274,10 @@ func DirectoryRenamed(dir string) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("failed to walk through directory %q: %w", diskPath, err)
+	}
+	return nil
 }
 
 func RemoveMetadata(fileName string) error {
@@ -281,12 +291,15 @@ func RemoveMetadata(fileName string) error {
 	for _, thumbnail := range metadata.Thumbnails {
 		diskPath := filepath.Join(dir, thumbnail.RelativePath)
 		if err := Fs.Remove(diskPath); err != nil {
-			return err
+			return fmt.Errorf("failed to remove thumbnail %q: %w", diskPath, err)
 		}
 	}
 
 	metaDiskPath := getMetaDiskPath(fileName)
-	return Fs.Remove(metaDiskPath)
+	if err = Fs.Remove(metaDiskPath); err != nil {
+		return fmt.Errorf("failed to remove metadata %q: %w", metaDiskPath, err)
+	}
+	return nil
 }
 
 func getMetaDiskPath(fileName string) string {

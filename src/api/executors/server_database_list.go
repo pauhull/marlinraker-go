@@ -1,9 +1,10 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/database"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
 )
 
 type ServerDatabaseListResult struct {

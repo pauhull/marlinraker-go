@@ -4,11 +4,8 @@ import (
 	"bufio"
 	buf "bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
-	"github.com/nfnt/resize"
-	"github.com/samber/lo"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
 	"image"
 	"image/draw"
 	"image/png"
@@ -18,6 +15,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/nfnt/resize"
+	"github.com/samber/lo"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
 )
 
 type imageData struct {
@@ -34,7 +36,7 @@ func ScanMetadata(fileName string) (*Metadata, error) {
 
 	file, err := Fs.Open(diskPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open file %q: %w", diskPath, err)
 	}
 
 	defer func() {
@@ -45,7 +47,7 @@ func ScanMetadata(fileName string) (*Metadata, error) {
 
 	stat, err := file.Stat()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to stat file %q: %w", diskPath, err)
 	}
 
 	metadata := &Metadata{
@@ -61,8 +63,8 @@ func ScanMetadata(fileName string) (*Metadata, error) {
 		startPos := position
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
-			if err != io.EOF {
-				return nil, err
+			if !errors.Is(err, io.EOF) {
+				return nil, fmt.Errorf("failed to read data: %w", err)
 			}
 			break
 		}
@@ -136,7 +138,7 @@ func ScanMetadata(fileName string) (*Metadata, error) {
 	if toDiscard > 0 {
 		discarded, err := reader.Discard(int(toDiscard))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to discard data: %w", err)
 		}
 		position += int64(discarded)
 	}
@@ -144,8 +146,8 @@ func ScanMetadata(fileName string) (*Metadata, error) {
 	for {
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
-			if err != io.EOF {
-				return nil, err
+			if !errors.Is(err, io.EOF) {
+				return nil, fmt.Errorf("failed to read data: %w", err)
 			}
 			break
 		}
@@ -328,7 +330,7 @@ func extractThumbnail(header string, reader *bufio.Reader) (int64, imageData, er
 	for {
 		bytes, err := reader.ReadBytes('\n')
 		if err != nil {
-			return read, imageData{}, err
+			return read, imageData{}, fmt.Errorf("failed to read thumbnail: %w", err)
 		}
 		read += int64(len(bytes))
 
@@ -356,7 +358,7 @@ func resizeImage(data []byte, size int) ([]byte, error) {
 
 	inputImage, err := png.Decode(buf.NewReader(data))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode image: %w", err)
 	}
 
 	width := inputImage.Bounds().Size().X
@@ -370,6 +372,9 @@ func resizeImage(data []byte, size int) ([]byte, error) {
 		newHeight = size * height / width
 	}
 
+	if newWidth < 1 || newHeight < 1 || newWidth > math.MaxInt32 || newHeight > math.MaxInt32 {
+		return nil, errors.New("invalid image size")
+	}
 	resizedImage := resize.Resize(uint(newWidth), uint(newHeight), inputImage, resize.Bilinear)
 
 	finalImage := image.NewRGBA(image.Rect(0, 0, size, size))
@@ -380,7 +385,7 @@ func resizeImage(data []byte, size int) ([]byte, error) {
 	var buffer buf.Buffer
 	err = png.Encode(&buffer, finalImage)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to encode image: %w", err)
 	}
 	return buffer.Bytes(), nil
 }

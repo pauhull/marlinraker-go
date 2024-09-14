@@ -2,15 +2,17 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/rs/cors"
 	"github.com/samber/lo"
 	log "github.com/sirupsen/logrus"
+
 	"marlinraker/src/api/executors"
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
-	"strings"
 )
 
 type Error struct {
@@ -80,7 +82,7 @@ var httpExecutors = map[string]map[string]Executor{
 		"/printer/gcode/help":       executors.PrinterGcodeHelp,
 		"/printer/info":             executors.PrinterInfo,
 		"/printer/objects/list":     executors.PrinterObjectsList,
-		"/printer/objects/query":    executors.PrinterObjectsQueryHttp,
+		"/printer/objects/query":    executors.PrinterObjectsQueryHTTP,
 		"/server/config":            executors.ServerConfig,
 		"/server/database/item":     executors.ServerDatabaseGetItem,
 		"/server/database/list":     executors.ServerDatabaseList,
@@ -104,7 +106,7 @@ var httpExecutors = map[string]map[string]Executor{
 		"/printer/emergency_stop":    executors.PrinterEmergencyStop,
 		"/printer/firmware_restart":  executors.PrinterFirmwareRestart,
 		"/printer/gcode/script":      executors.PrinterGcodeScript,
-		"/printer/objects/subscribe": executors.PrinterObjectsSubscribeHttp,
+		"/printer/objects/subscribe": executors.PrinterObjectsSubscribeHTTP,
 		"/printer/print/cancel":      executors.PrinterPrintCancel,
 		"/printer/print/pause":       executors.PrinterPrintPause,
 		"/printer/print/resume":      executors.PrinterPrintResume,
@@ -124,9 +126,9 @@ var httpExecutors = map[string]map[string]Executor{
 	},
 }
 
-type HttpHandler struct{}
+type HTTPHandler struct{}
 
-func (HttpHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (HTTPHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 
 	log.WithField("method", request.Method).Debugln(request.URL.String())
 
@@ -159,7 +161,7 @@ func handlePath(writer http.ResponseWriter, request *http.Request, requestPath s
 		}
 
 	default:
-		return handleHttp(writer, request)
+		return handleHTTP(writer, request)
 	}
 }
 
@@ -167,7 +169,13 @@ func StartServer() {
 	address := fmt.Sprintf("%s:%d", marlinraker.Config.Web.BindAddress, marlinraker.Config.Web.Port)
 	log.Printf("Listening on %s", address)
 
-	err := http.ListenAndServe(address, cors.AllowAll().Handler(HttpHandler{}))
+	server := &http.Server{
+		Addr:              address,
+		Handler:           cors.AllowAll().Handler(HTTPHandler{}),
+		ReadHeaderTimeout: 0, // we might have long-running requests
+	}
+
+	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}

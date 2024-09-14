@@ -2,21 +2,25 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/websocket"
 	"io"
-	"marlinraker/src/api/executors"
-	"marlinraker/src/files"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"testing"
+
+	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
+
+	"marlinraker/src/api/executors"
+	"marlinraker/src/files"
 )
 
-func testHttp[Result any](t *testing.T, method string, endpoint string, params executors.Params,
+func testHTTP[Result any](t *testing.T, method string, endpoint string, params executors.Params,
 	f func(*testing.T, *httptest.ResponseRecorder, *Result, *Error)) {
 	t.Run(method+endpoint, func(t *testing.T) {
 
@@ -34,19 +38,18 @@ func testHttp[Result any](t *testing.T, method string, endpoint string, params e
 			urlQuery.RawQuery = values.Encode()
 		} else {
 			bodyBytes, err := json.Marshal(params)
-			if err != nil {
-				t.Fatal(err)
-			}
+			require.NoError(t, err)
 			body = bytes.NewReader(bodyBytes)
 		}
 
-		request, _ := http.NewRequest(method, urlQuery.String(), body)
+		request, err := http.NewRequestWithContext(context.Background(), method, urlQuery.String(), body)
+		require.NoError(t, err)
 		if body != nil {
 			request.Header.Add("Content-Type", "application/json")
 		}
 
 		recorder := httptest.NewRecorder()
-		HttpHandler{}.ServeHTTP(recorder, request)
+		HTTPHandler{}.ServeHTTP(recorder, request)
 
 		var errorResponse ErrorResponse
 		err = json.Unmarshal(recorder.Body.Bytes(), &errorResponse)
@@ -81,20 +84,21 @@ func testSocket[Result any](t *testing.T, method string, params executors.Params
 		}))
 
 		defer server.Close()
-		socketUrl := fmt.Sprintf("ws%s", server.URL[4:])
+		socketURL := fmt.Sprintf("ws%s", server.URL[4:])
 
-		socket, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
+		//nolint:bodyclose
+		socket, _, err := websocket.DefaultDialer.Dial(socketURL, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer func(socket *websocket.Conn) {
+		defer func() {
 			_ = socket.Close()
-		}(socket)
+		}()
 
-		request := RpcRequest{
-			Rpc: Rpc{
-				JsonRpc: "2.0",
-				Id:      0,
+		request := RPCRequest{
+			RPC: RPC{
+				JSONRPC: "2.0",
+				ID:      0,
 			},
 			Method: method,
 			Params: params,
@@ -118,7 +122,7 @@ func testSocket[Result any](t *testing.T, method string, params executors.Params
 				t.Fatal(err)
 			}
 
-			var errorResponse RpcErrorResponse
+			var errorResponse RPCErrorResponse
 			err = json.Unmarshal(data, &errorResponse)
 			if err != nil {
 				t.Fatal(err)
@@ -140,13 +144,13 @@ func testSocket[Result any](t *testing.T, method string, params executors.Params
 	})
 }
 
-func testAll[Result any](t *testing.T, rpcMethod string, httpMethod string, httpUrl string, params executors.Params,
+func testAll[Result any](t *testing.T, rpcMethod string, httpMethod string, httpURL string, params executors.Params,
 	f func(*testing.T, *httptest.ResponseRecorder, *Result, *Error)) {
 
 	testSocket(t, rpcMethod, params, func(t *testing.T, result *Result, error *Error) {
 		f(t, nil, result, error)
 	})
-	testHttp(t, httpMethod, httpUrl, params, f)
+	testHTTP(t, httpMethod, httpURL, params, f)
 }
 
 func makeConnection(t *testing.T) (*websocket.Conn, int) {
@@ -158,15 +162,14 @@ func makeConnection(t *testing.T) (*websocket.Conn, int) {
 	}))
 
 	defer server.Close()
-	socketUrl := fmt.Sprintf("ws%s", server.URL[4:])
+	socketURL := fmt.Sprintf("ws%s", server.URL[4:])
 
-	socket, _, err := websocket.DefaultDialer.Dial(socketUrl, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	//nolint:bodyclose
+	socket, _, err := websocket.DefaultDialer.Dial(socketURL, nil)
+	require.NoError(t, err)
 
-	err = socket.WriteJSON(RpcRequest{
-		Rpc:    Rpc{JsonRpc: "2.0", Id: 42},
+	err = socket.WriteJSON(RPCRequest{
+		RPC:    RPC{JSONRPC: "2.0", ID: 42},
 		Method: "server.connection.identify",
 		Params: executors.Params{"client_name": "", "version": "", "type": "", "url": ""},
 	})
@@ -174,14 +177,14 @@ func makeConnection(t *testing.T) (*websocket.Conn, int) {
 		t.Fatal(err)
 	}
 
-	var response RpcResultResponse
+	var response RPCResultResponse
 	err = socket.ReadJSON(&response)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	connectionId := response.Result.(map[string]any)["connection_id"].(float64)
-	return socket, int(connectionId)
+	connectionID := response.Result.(map[string]any)["connection_id"].(float64)
+	return socket, int(connectionID)
 }
 
 func testFileUpload[Result any](t *testing.T, url string, fields map[string]string, fileName string, filePath string,
@@ -228,7 +231,7 @@ func testFileUpload[Result any](t *testing.T, url string, fields map[string]stri
 		request.Header.Add("Content-Type", writer.FormDataContentType())
 
 		recorder := httptest.NewRecorder()
-		HttpHandler{}.ServeHTTP(recorder, request)
+		HTTPHandler{}.ServeHTTP(recorder, request)
 
 		var errorResponse ErrorResponse
 		if err := json.Unmarshal(recorder.Body.Bytes(), &errorResponse); err != nil {

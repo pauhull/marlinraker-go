@@ -2,6 +2,8 @@ package notification
 
 import (
 	"encoding/json"
+	"fmt"
+
 	"marlinraker/src/marlinraker/connections"
 )
 
@@ -11,7 +13,7 @@ type Notification interface {
 }
 
 type rpc struct {
-	JsonRpc string `json:"jsonrpc"`
+	JSONRPC string `json:"jsonrpc"`
 	Method  string `json:"method"`
 	Params  []any  `json:"params,omitempty"`
 }
@@ -24,18 +26,18 @@ func Publish(notification Notification) error {
 	}
 
 	jsonBytes, err := json.Marshal(rpc{
-		JsonRpc: "2.0",
+		JSONRPC: "2.0",
 		Method:  notification.Method(),
 		Params:  notification.Params(),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal notification: %w", err)
 	}
 
 	for _, connection := range connections.GetConnections() {
 		err = connection.WriteText(jsonBytes)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to write to connection: %w", err)
 		}
 	}
 	return nil
@@ -47,13 +49,17 @@ func Send(connection *connections.Connection, notification Notification) error {
 	}
 
 	jsonBytes, err := json.Marshal(rpc{
-		JsonRpc: "2.0",
+		JSONRPC: "2.0",
 		Method:  notification.Method(),
 		Params:  notification.Params(),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal notification: %w", err)
 	}
 
-	return connection.WriteText(jsonBytes)
+	err = connection.WriteText(jsonBytes)
+	if err != nil {
+		return fmt.Errorf("failed to write to connection: %w", err)
+	}
+	return nil
 }

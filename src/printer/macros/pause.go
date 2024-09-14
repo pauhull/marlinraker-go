@@ -1,6 +1,8 @@
 package macros
 
 import (
+	"fmt"
+
 	"marlinraker/src/shared"
 )
 
@@ -11,5 +13,9 @@ func (pauseMacro) Description() string {
 }
 
 func (pauseMacro) Execute(manager *MacroManager, context shared.ExecutorContext, _ []string, _ Objects, _ Params) error {
-	return manager.printer.GetPrintManager().Pause(context)
+	err := manager.printer.GetPrintManager().Pause(context)
+	if err != nil {
+		return fmt.Errorf("failed to pause print: %w", err)
+	}
+	return nil
 }

@@ -1,16 +1,19 @@
 package logger
 
 import (
-	nested "github.com/antonfisher/nested-logrus-formatter"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
+	"fmt"
 	"io"
-	"marlinraker/src/files"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"sync"
 	"syscall"
+
+	nested "github.com/antonfisher/nested-logrus-formatter"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
+
+	"marlinraker/src/files"
 )
 
 var (
@@ -38,7 +41,7 @@ func SetupLogger() error {
 
 func HandleRotate() {
 
-	ch := make(chan os.Signal)
+	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGUSR1)
 
 	for {
@@ -55,7 +58,10 @@ func HandleRotate() {
 func CloseLogger() error {
 	mu.Lock()
 	defer mu.Unlock()
-	return logFile.Close()
+	if err := logFile.Close(); err != nil {
+		return fmt.Errorf("failed to close log file: %w", err)
+	}
+	return nil
 }
 
 func openLogFile() error {
@@ -63,14 +69,14 @@ func openLogFile() error {
 	var err error
 	if logFile != nil {
 		if err = logFile.Close(); err != nil {
-			return err
+			return fmt.Errorf("failed to close log file: %w", err)
 		}
 	}
 
 	logFilePath := filepath.Join(files.DataDir, "logs/marlinraker.log")
 	logFile, err = files.Fs.OpenFile(logFilePath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0755)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open %q: %w", logFile, err)
 	}
 	log.SetOutput(io.MultiWriter(logFile, os.Stdout))
 	return nil

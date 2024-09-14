@@ -2,6 +2,7 @@ package parser
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"strconv"
 )
@@ -14,7 +15,7 @@ func ParseM220M221(request string) (int, error) {
 	if match := sRegex.FindStringSubmatch(request); match != nil {
 		s, err := strconv.ParseInt(match[1], 10, 64)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("failed to parse S parameter: %w", err)
 		}
 		return int(s), nil
 	}

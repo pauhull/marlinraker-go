@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/coreos/go-systemd/v22/dbus"
-	"marlinraker/src/config"
 	"strings"
+
+	"github.com/coreos/go-systemd/v22/dbus"
+
+	"marlinraker/src/config"
 )
 
 type UnitState struct {

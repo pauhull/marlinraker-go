@@ -2,15 +2,16 @@ package procfs
 
 import (
 	"fmt"
-	"github.com/samber/lo"
 	"math"
 	"net"
 	"os"
 	"regexp"
 	"strconv"
+
+	"github.com/samber/lo"
 )
 
-type IpAddress struct {
+type IPAddress struct {
 	Family      string `json:"family"`
 	Address     string `json:"address"`
 	IsLinkLocal bool   `json:"is_link_local"`
@@ -18,7 +19,7 @@ type IpAddress struct {
 
 type Network struct {
 	MacAddress  string      `json:"mac_address"`
-	IpAddresses []IpAddress `json:"ip_addresses"`
+	IPAddresses []IPAddress `json:"ip_addresses"`
 }
 
 func GetNetwork() (map[string]Network, error) {
@@ -39,10 +40,10 @@ func GetNetwork() (map[string]Network, error) {
 
 		networks[iface.Name] = Network{
 			MacAddress: iface.HardwareAddr.String(),
-			IpAddresses: lo.Map(addresses, func(address net.Addr, _ int) IpAddress {
+			IPAddresses: lo.Map(addresses, func(address net.Addr, _ int) IPAddress {
 
 				if ipv4 := address.(*net.IPNet).IP.To4(); ipv4 != nil {
-					return IpAddress{
+					return IPAddress{
 						Address:     ipv4.String(),
 						Family:      "ipv4",
 						IsLinkLocal: ipv4.IsLinkLocalUnicast() || ipv4.IsLinkLocalMulticast(),
@@ -50,14 +51,14 @@ func GetNetwork() (map[string]Network, error) {
 				}
 
 				if ipv6 := address.(*net.IPNet).IP.To16(); ipv6 != nil {
-					return IpAddress{
+					return IPAddress{
 						Address:     ipv6.String(),
 						Family:      "ipv6",
 						IsLinkLocal: ipv6.IsLinkLocalUnicast() || ipv6.IsLinkLocalMulticast(),
 					}
 				}
 
-				return IpAddress{}
+				return IPAddress{}
 			}),
 		}
 	}

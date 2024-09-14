@@ -34,13 +34,13 @@ func ParseM105(response string) (map[string]any, error) {
 
 			temp, err := strconv.ParseFloat(match[2], 64)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse temperature: %w", err)
 			}
 
 			if isHeater {
 				target, err := strconv.ParseFloat(match[3], 64)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("failed to parse target temperature: %w", err)
 				}
 				temperatures[sensorName] = Heater{
 					Sensor: Sensor{temp},
@@ -72,7 +72,7 @@ func ParseM105(response string) (map[string]any, error) {
 			if heater, isHeater := heater.(Heater); isHeater {
 				power, err := strconv.ParseFloat(match[3], 64)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("failed to parse power: %w", err)
 				}
 				heater.Power = power / 127.0
 				temperatures[heaterName] = heater

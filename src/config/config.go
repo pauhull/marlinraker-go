@@ -1,15 +1,19 @@
 package config
 
 import (
-	"github.com/BurntSushi/toml"
-	"github.com/samber/lo"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/afero"
-	"marlinraker/src/files"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/BurntSushi/toml"
+	"github.com/samber/lo"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/afero"
+
+	"marlinraker/src/files"
 )
 
 type Web struct {
@@ -78,11 +82,11 @@ var includeRegex = regexp.MustCompile(`(?mi)^#include +(\S+).*$`)
 
 func LoadConfig(path string) (*Config, error) {
 	if _, err := files.Fs.Stat(path); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not stat %q: %w", path, err)
 	}
 	contents, err := resolve(path, []string{})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not resolve includes in %q: %w", path, err)
 	}
 	return parseConfig(contents)
 }
@@ -95,17 +99,17 @@ func resolve(currentPath string, resolvedSoFar []string) (string, error) {
 
 	stat, err := files.Fs.Stat(currentPath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			log.Warnf("File or directory %q not found", currentPath)
 			return "", nil
 		}
-		return "", err
+		return "", fmt.Errorf("could not stat %q: %w", currentPath, err)
 	}
 
 	if stat.IsDir() {
 		dirFiles, err := afero.ReadDir(files.Fs, currentPath)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("could not read directory %q: %w", currentPath, err)
 		}
 		contents := make([]string, 0)
 		for _, file := range dirFiles {
@@ -119,41 +123,39 @@ func resolve(currentPath string, resolvedSoFar []string) (string, error) {
 			contents = append(contents, content)
 		}
 		return strings.Join(contents, "\n"), nil
+	}
 
-	} else {
+	contentBytes, err := afero.ReadFile(files.Fs, currentPath)
+	if err != nil {
+		return "", fmt.Errorf("could not read %q: %w", currentPath, err)
+	}
+	content := string(contentBytes)
+	resolvedSoFar = append(resolvedSoFar, currentPath)
 
-		contentBytes, err := afero.ReadFile(files.Fs, currentPath)
+	matches := includeRegex.FindAllStringIndex(content, -1)
+	for i := len(matches) - 1; i >= 0; i-- {
+		start, end := matches[i][0], matches[i][1]
+		str := content[start:end]
+		filename := includeRegex.FindStringSubmatch(str)[1]
+		nextPath, err := filepath.Abs(filepath.Join(filepath.Dir(currentPath), filename))
+		if err != nil {
+			return "", fmt.Errorf("could not resolve path %q: %w", filename, err)
+		}
+
+		if lo.Contains(resolvedSoFar, nextPath) {
+			log.Warnf("Cannot resolve cyclic dependency %q in %q", filename, currentPath)
+			continue
+		}
+
+		result, err := resolve(nextPath, resolvedSoFar)
 		if err != nil {
 			return "", err
 		}
-		content := string(contentBytes)
-		resolvedSoFar = append(resolvedSoFar, currentPath)
 
-		matches := includeRegex.FindAllStringIndex(content, -1)
-		for i := len(matches) - 1; i >= 0; i-- {
-			start, end := matches[i][0], matches[i][1]
-			str := content[start:end]
-			filename := includeRegex.FindStringSubmatch(str)[1]
-			nextPath, err := filepath.Abs(filepath.Join(filepath.Dir(currentPath), filename))
-			if err != nil {
-				return "", err
-			}
-
-			if lo.Contains(resolvedSoFar, nextPath) {
-				log.Warnf("Cannot resolve cyclic dependency %q in %q", filename, currentPath)
-				continue
-			}
-
-			result, err := resolve(nextPath, resolvedSoFar)
-			if err != nil {
-				return "", err
-			}
-
-			content = content[0:start] + result + content[end:]
-		}
-
-		return content, nil
+		content = content[0:start] + result + content[end:]
 	}
+
+	return content, nil
 }
 
 func DefaultConfig() *Config {
@@ -203,5 +205,8 @@ func DefaultConfig() *Config {
 func parseConfig(contents string) (*Config, error) {
 	config := DefaultConfig()
 	_, err := toml.Decode(contents, config)
-	return config, err
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+	return config, nil
 }

@@ -1,9 +1,10 @@
 package temp_store
 
 import (
-	"marlinraker/src/printer/parser"
 	"sync"
 	"time"
+
+	"marlinraker/src/printer/parser"
 )
 
 type tempRecords struct {

@@ -1,9 +1,11 @@
 package executors
 
 import (
+	"fmt"
+	"net/http"
+
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/system_info"
-	"net/http"
 )
 
 type MachineSystemInfoResult struct {
@@ -14,7 +16,7 @@ func MachineSystemInfo(*connections.Connection, *http.Request, Params) (any, err
 
 	info, err := system_info.GetSystemInfo()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get system info: %w", err)
 	}
 
 	return MachineSystemInfoResult{info}, nil

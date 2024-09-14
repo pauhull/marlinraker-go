@@ -1,12 +1,14 @@
 package parser
 
 import (
-	"github.com/spf13/afero"
-	"gotest.tools/assert"
-	"marlinraker/src/files"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/spf13/afero"
+	"gotest.tools/assert"
+
+	"marlinraker/src/files"
 )
 
 func readContent(t *testing.T, name string) string {

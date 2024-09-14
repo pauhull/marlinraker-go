@@ -1,8 +1,9 @@
 package procfs
 
 import (
-	"gotest.tools/assert"
 	"testing"
+
+	"gotest.tools/assert"
 )
 
 func TestDistribution(t *testing.T) {
@@ -12,7 +13,7 @@ func TestDistribution(t *testing.T) {
 		assert.NilError(t, err)
 		assert.DeepEqual(t, info, &Distribution{
 			Name:    "Ubuntu 22.04.2 LTS",
-			Id:      "ubuntu",
+			ID:      "ubuntu",
 			Version: "22.04",
 			VersionParts: versionParts{
 				Major: "22",
@@ -28,7 +29,7 @@ func TestDistribution(t *testing.T) {
 		assert.NilError(t, err)
 		assert.DeepEqual(t, info, &Distribution{
 			Name:    "Raspbian GNU/Linux 11 (bullseye)",
-			Id:      "raspbian",
+			ID:      "raspbian",
 			Version: "11",
 			VersionParts: versionParts{
 				Major: "11",

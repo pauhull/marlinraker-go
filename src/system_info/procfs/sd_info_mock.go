@@ -4,9 +4,9 @@ package procfs
 
 func GetSdInfo() (*SdInfo, error) {
 	return &SdInfo{
-		ManufacturerId:   "",
+		ManufacturerID:   "",
 		Manufacturer:     "Unknown",
-		OemId:            "",
+		OemID:            "",
 		ProductName:      "Unknown",
 		ProductRevision:  "",
 		SerialNumber:     "",

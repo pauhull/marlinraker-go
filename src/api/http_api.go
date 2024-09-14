@@ -2,14 +2,18 @@ package api
 
 import (
 	"encoding/json"
-	log "github.com/sirupsen/logrus"
+	"errors"
+	"fmt"
 	"io"
-	"marlinraker/src/api/executors"
-	"marlinraker/src/files"
-	"marlinraker/src/util"
 	"net/http"
 	"path/filepath"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/api/executors"
+	"marlinraker/src/files"
+	"marlinraker/src/util"
 )
 
 type ErrorResponse struct {
@@ -20,7 +24,7 @@ type ResultResponse struct {
 	Result any `json:"result"`
 }
 
-func handleHttp(writer http.ResponseWriter, request *http.Request) error {
+func handleHTTP(writer http.ResponseWriter, request *http.Request) error {
 
 	writer.Header().Set("Content-Type", "application/json")
 
@@ -36,10 +40,10 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) error {
 	if request.Body != nil && request.ContentLength > 0 && request.Header.Get("Content-Type") == "application/json" {
 		bodyBytes, err := io.ReadAll(request.Body)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read request body: %w", err)
 		}
-		if err := json.Unmarshal(bodyBytes, &params); err != nil {
-			return err
+		if err = json.Unmarshal(bodyBytes, &params); err != nil {
+			return fmt.Errorf("failed to unmarshal request body: %w", err)
 		}
 	}
 
@@ -49,10 +53,10 @@ func handleHttp(writer http.ResponseWriter, request *http.Request) error {
 		writer.WriteHeader(404)
 		bytes, err := json.Marshal(&Error{Code: 404, Message: "Not Found"})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to marshal error: %w", err)
 		}
 		if _, err = writer.Write(bytes); err != nil {
-			return err
+			return fmt.Errorf("failed to write response: %w", err)
 		}
 		return nil
 	}
@@ -66,16 +70,17 @@ func writeExecutorResponse(writer http.ResponseWriter, method string, url string
 	if err != nil {
 		log.Errorf("Error while executing %s %s: %v", method, url, err)
 		code := 500
-		if executorError, isExecutorError := err.(*util.ExecutorError); isExecutorError {
+		var executorError *util.ExecutorError
+		if errors.As(err, &executorError) {
 			code = executorError.Code
 		}
 		bytes, err := json.Marshal(ErrorResponse{Error: Error{Code: code, Message: err.Error()}})
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to marshal error: %w", err)
 		}
 		writer.WriteHeader(code)
 		if _, err = writer.Write(bytes); err != nil {
-			return err
+			return fmt.Errorf("failed to write response: %w", err)
 		}
 		return nil
 	}
@@ -88,12 +93,15 @@ func writeExecutorResponse(writer http.ResponseWriter, method string, url string
 		bytes, err = json.Marshal(ResultResponse{result})
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal response: %w", err)
 	}
 
 	writer.WriteHeader(200)
 	_, err = writer.Write(bytes)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to write response: %w", err)
+	}
+	return nil
 }
 
 func handleFileDownload(writer http.ResponseWriter, request *http.Request) error {

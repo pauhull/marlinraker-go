@@ -1,11 +1,14 @@
 package executors
 
 import (
-	"github.com/samber/lo"
-	"marlinraker/src/files"
-	"marlinraker/src/marlinraker/connections"
+	"fmt"
 	"net/http"
 	"path/filepath"
+
+	"github.com/samber/lo"
+
+	"marlinraker/src/files"
+	"marlinraker/src/marlinraker/connections"
 )
 
 type ServerFilesThumbnailsResult *files.Metadata
@@ -21,12 +24,12 @@ func ServerFilesThumbnails(_ *connections.Connection, _ *http.Request, params Pa
 
 	fileName, err := params.RequirePath("filename")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("filename: %w", err)
 	}
 
 	metadata, err := files.LoadOrScanMetadata(fileName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not load metadata for %q: %w", fileName, err)
 	}
 
 	dir := filepath.Dir(fileName)

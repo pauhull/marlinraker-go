@@ -4,14 +4,16 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
-	"marlinraker/src/api/notification"
-	"marlinraker/src/util"
 	"mime/multipart"
 	"os"
 	"path/filepath"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/api/notification"
+	"marlinraker/src/util"
 )
 
 type FileMeta struct {
@@ -42,7 +44,7 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 	fileName := header.Filename
 	sourceFile, err := header.Open()
 	if err != nil {
-		return FileUploadAction{}, err
+		return FileUploadAction{}, fmt.Errorf("failed to open file %q: %w", fileName, err)
 	}
 
 	defer func() {
@@ -64,7 +66,7 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 	destPath := filepath.Join(destDirPath, fileName)
 
 	if err := Fs.MkdirAll(destDirPath, 0755); err != nil {
-		return FileUploadAction{}, err
+		return FileUploadAction{}, fmt.Errorf("failed to create directory %q: %w", destDirPath, err)
 	}
 
 	_, err = Fs.Stat(destPath)
@@ -72,7 +74,7 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 
 	destFile, err := Fs.OpenFile(destPath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
-		return FileUploadAction{}, err
+		return FileUploadAction{}, fmt.Errorf("failed to open file %q: %w", destPath, err)
 	}
 
 	defer func() {
@@ -82,7 +84,7 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 	}()
 
 	if _, err = io.Copy(destFile, sourceFile); err != nil {
-		return FileUploadAction{}, err
+		return FileUploadAction{}, fmt.Errorf("failed to copy file %q to %q: %w", fileName, destPath, err)
 	}
 
 	if checksum != "" {
@@ -97,7 +99,7 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 
 	stat, err := Fs.Stat(destPath)
 	if err != nil {
-		return FileUploadAction{}, err
+		return FileUploadAction{}, fmt.Errorf("failed to stat file %q: %w", destPath, err)
 	}
 
 	actionName := "create_file"
@@ -117,17 +119,19 @@ func Upload(rootName, path, checksum string, header *multipart.FileHeader) (File
 	}
 
 	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
-	return action, err
+	if err != nil {
+		return FileUploadAction{}, fmt.Errorf("failed to publish notification: %w", err)
+	}
+	return action, nil
 }
 
 func DeleteFile(path string) (FileDeleteAction, error) {
 
-	var rootName, fileName string
-	if idx := strings.IndexByte(path, '/'); idx == -1 {
+	idx := strings.IndexByte(path, '/')
+	if idx == -1 {
 		return FileDeleteAction{}, errors.New("invalid filepath")
-	} else {
-		rootName, fileName = path[:idx], path[idx+1:]
 	}
+	rootName, fileName := path[:idx], path[idx+1:]
 
 	root, err := getRootByName(rootName)
 	if err != nil {
@@ -141,13 +145,13 @@ func DeleteFile(path string) (FileDeleteAction, error) {
 	diskPath := filepath.Join(DataDir, rootName, fileName)
 	stat, err := Fs.Stat(diskPath)
 	if err != nil {
-		return FileDeleteAction{}, err
+		return FileDeleteAction{}, fmt.Errorf("failed to stat file %q: %w", diskPath, err)
 	}
 	if stat.IsDir() {
 		return FileDeleteAction{}, util.NewErrorf(400, "%s is a directory", diskPath)
 	}
 	if err := Fs.Remove(diskPath); err != nil {
-		return FileDeleteAction{}, err
+		return FileDeleteAction{}, fmt.Errorf("failed to delete file %q: %w", diskPath, err)
 	}
 
 	if HasMetadata(fileName) {
@@ -168,14 +172,17 @@ func DeleteFile(path string) (FileDeleteAction, error) {
 	}
 
 	err = notification.Publish(notification.New("notify_filelist_changed", []any{action}))
-	return action, err
+	if err != nil {
+		return FileDeleteAction{}, fmt.Errorf("failed to publish notification: %w", err)
+	}
+	return action, nil
 }
 
 func calculateChecksum(filePath string) (string, error) {
 
 	file, err := Fs.Open(filePath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to open file %q: %w", filePath, err)
 	}
 
 	defer func() {
@@ -186,7 +193,7 @@ func calculateChecksum(filePath string) (string, error) {
 
 	digest := sha256.New()
 	if _, err := io.Copy(digest, file); err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to read file %q: %w", filePath, err)
 	}
 
 	checksum := fmt.Sprintf("%x", digest.Sum(nil))

@@ -1,10 +1,11 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/files"
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/util"
-	"net/http"
 )
 
 type ServerFilesResult = []files.File

@@ -1,9 +1,11 @@
 package executors
 
 import (
+	"fmt"
+	"net/http"
+
 	"marlinraker/src/marlinraker/connections"
 	"marlinraker/src/service"
-	"net/http"
 )
 
 func MachineServicesStop(_ *connections.Connection, _ *http.Request, params Params) (any, error) {
@@ -14,7 +16,7 @@ func MachineServicesStop(_ *connections.Connection, _ *http.Request, params Para
 	}
 
 	if err := service.PerformAction(svc, service.Stop); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to stop service %q: %w", svc, err)
 	}
 	return "ok", nil
 }

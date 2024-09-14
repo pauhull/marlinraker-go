@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
-	"marlinraker/src/api/executors"
-	"marlinraker/src/marlinraker"
 	"net/http"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
+
+	"marlinraker/src/api/executors"
+	"marlinraker/src/marlinraker"
 )
 
 var (
@@ -160,7 +162,7 @@ func handleOctoPrint(writer http.ResponseWriter, request *http.Request) error {
 		case "/api/files/local":
 			result, err = executors.ServerFilesUpload(nil, request, nil)
 		case "/api/printer/command":
-			result, err = handleApiPrinterCommand(request)
+			result, err = handleAPIPrinterCommand(request)
 		}
 		if err != nil {
 			return err
@@ -171,19 +173,26 @@ func handleOctoPrint(writer http.ResponseWriter, request *http.Request) error {
 		log.Errorf("Cannot find OctoPrint API endpoint %s %s", method, path)
 		writer.WriteHeader(404)
 		_, err := writer.Write([]byte("Not found"))
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to write response: %w", err)
+		}
+		return nil
 	}
 
 	bytes, err := json.Marshal(result)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal response: %w", err)
 	}
+
 	writer.WriteHeader(200)
 	_, err = writer.Write(bytes)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to write response: %w", err)
+	}
+	return nil
 }
 
-func handleApiPrinterCommand(request *http.Request) (any, error) {
+func handleAPIPrinterCommand(request *http.Request) (any, error) {
 
 	printer := marlinraker.Printer
 	if printer == nil {

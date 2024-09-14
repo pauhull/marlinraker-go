@@ -2,7 +2,9 @@ package system_info
 
 import (
 	"fmt"
+
 	"github.com/samber/lo"
+
 	"marlinraker/src/service"
 	"marlinraker/src/system_info/procfs"
 )
@@ -13,11 +15,11 @@ type virtualization struct {
 }
 
 type SystemInfo struct {
-	CpuInfo           *procfs.CpuInfo              `json:"cpu_info"`
+	CPUInfo           *procfs.CPUInfo              `json:"cpu_info"`
 	SdInfo            *procfs.SdInfo               `json:"sd_info"`
 	Distribution      *procfs.Distribution         `json:"distribution"`
 	AvailableServices []string                     `json:"available_services"`
-	InstanceIds       map[string]string            `json:"instance_ids"`
+	InstanceIDs       map[string]string            `json:"instance_ids"`
 	ServiceState      map[string]service.UnitState `json:"service_state"`
 	Virtualization    *virtualization              `json:"virtualization"`
 	Network           map[string]procfs.Network    `json:"network"`
@@ -25,7 +27,7 @@ type SystemInfo struct {
 
 func GetSystemInfo() (*SystemInfo, error) {
 
-	cpuInfo, err := procfs.GetCpuInfo()
+	cpuInfo, err := procfs.GetCPUInfo()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cpu info: %w", err)
 	}
@@ -43,11 +45,11 @@ func GetSystemInfo() (*SystemInfo, error) {
 	}
 
 	info := &SystemInfo{
-		CpuInfo:           cpuInfo,
+		CPUInfo:           cpuInfo,
 		SdInfo:            sdInfo,
 		Distribution:      distribution,
 		AvailableServices: []string{},
-		InstanceIds:       map[string]string{},
+		InstanceIDs:       map[string]string{},
 		ServiceState:      map[string]service.UnitState{},
 		Virtualization:    &virtualization{"none", "none"},
 		Network:           network,

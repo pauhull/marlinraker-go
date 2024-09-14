@@ -1,9 +1,10 @@
 package executors
 
 import (
+	"net/http"
+
 	"marlinraker/src/marlinraker"
 	"marlinraker/src/marlinraker/connections"
-	"net/http"
 )
 
 type PrinterEmergencyStopResult string
