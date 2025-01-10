@@ -20,7 +20,7 @@ require (
 	github.com/tidwall/gjson v1.17.3
 	github.com/tidwall/sjson v1.2.5
 	go.bug.st/serial v1.6.2
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
+	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 	gotest.tools v2.2.0+incompatible
 )
 
